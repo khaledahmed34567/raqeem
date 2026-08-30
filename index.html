@@ -43,7 +43,13 @@
 }
 
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html{overflow-x:hidden; scrollbar-gutter:stable;}
+html{overflow-x:hidden; scrollbar-gutter:stable; scroll-behavior:smooth;}
+
+#topLoader{position:fixed; top:0; right:0; left:0; height:3px; z-index:300; width:0%; opacity:0;
+  background:linear-gradient(90deg, var(--emerald), var(--gold)); box-shadow:0 0 8px var(--emerald-soft);}
+
+#appRoot.page-anim{animation:pageFadeIn .38s cubic-bezier(.16,.84,.44,1) both;}
+@keyframes pageFadeIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
 html,body{margin:0;padding:0;background:var(--canvas);color:var(--ink); max-width:100%;}
 body{
   overflow-x:hidden; font-family:'AppBody','SF Pro Arabic','Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; min-height:100dvh; transition:background .3s ease,color .3s ease;
@@ -71,7 +77,7 @@ img{max-width:100%; display:block;}
 .icon{width:18px; height:18px; display:inline-block; flex-shrink:0;}
 .icon svg{width:100%; height:100%;}
 
-.wrap{max-width:1180px; margin:0 auto; padding:0 clamp(16px,4vw,24px);}
+.wrap{max-width:1180px; margin:0 auto; padding:0 clamp(16px,4vw,24px); padding-inline-start:max(clamp(16px,4vw,24px), env(safe-area-inset-left)); padding-inline-end:max(clamp(16px,4vw,24px), env(safe-area-inset-right));}
 
 /* ---- Nav (cleaned) ---- */
 .nav{position:sticky; top:0; z-index:40; backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%); background:var(--surface-glass); border-bottom:1px solid var(--line);}
@@ -133,6 +139,41 @@ img{max-width:100%; display:block;}
 .card{background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border:1px solid var(--glass-border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-soft); transition:transform .25s ease, box-shadow .25s ease; cursor:pointer;}
 .card:hover{transform:translateY(-4px); box-shadow:var(--shadow-lift);}
 .card .thumb{aspect-ratio:16/10; background:var(--surface-2); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; color:var(--ink-soft);}
+.bookmark-btn{position:absolute; top:10px; left:10px; width:34px; height:34px; border-radius:50%; border:none; background:rgba(255,255,255,.85); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-soft); box-shadow:var(--shadow-soft); transition:transform .15s;}
+.bookmark-btn:active{transform:scale(.88);}
+.bookmark-btn.active{color:#D6493E;}
+
+.announce-banner{display:flex; align-items:center; gap:12px; background:var(--gold-soft); border:1px solid var(--gold); border-radius:var(--radius-md); padding:12px 16px; margin:16px 0; color:#7A5B10;}
+.announce-banner .icon{color:var(--gold); flex-shrink:0;}
+.announce-text{flex:1; display:flex; flex-direction:column; gap:2px; font-size:13px;}
+.announce-text strong{font-size:13.5px;}
+.announce-close{border:none; background:transparent; cursor:pointer; color:inherit; opacity:.6; flex-shrink:0;}
+.announce-close .icon svg{transform:rotate(90deg);}
+
+.qa-item{border:1px solid var(--glass-border); background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:10px;}
+.qa-item .qa-q{font-size:13.5px; font-weight:600; display:flex; gap:8px; align-items:flex-start;}
+.qa-item .qa-meta{font-size:11px; color:var(--ink-soft); margin-top:4px;}
+.qa-item .qa-a{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:13px; color:var(--ink-soft); display:flex; gap:8px; align-items:flex-start;}
+
+.leader-row{display:flex; align-items:center; gap:14px; padding:14px 18px;}
+.leader-rank{width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; background:var(--surface-2); color:var(--ink-soft); flex-shrink:0;}
+.leader-rank.gold{background:#C6A87D; color:#241d10;}
+.leader-rank.silver{background:#D9D6CC; color:#241d10;}
+.leader-rank.bronze{background:#C99A6A; color:#241d10;}
+
+/* ---- 404 ---- */
+.notfound-wrap{text-align:center; padding:88px 16px 70px; max-width:520px; margin:0 auto;}
+.notfound-isnad{display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:34px;}
+.notfound-isnad .node{display:flex; align-items:center;}
+.notfound-isnad .dot{width:10px; height:10px; border-radius:50%; background:var(--line); border:2px solid var(--surface);}
+.notfound-isnad .node.done .dot{background:var(--emerald);}
+.notfound-isnad .thread{height:1.5px; width:36px; background:var(--line);}
+.notfound-mark{width:64px; height:64px; margin:0 auto 18px; border-radius:50%; background:var(--emerald-soft); color:var(--emerald); display:flex; align-items:center; justify-content:center;}
+.notfound-mark .icon{width:28px; height:28px;}
+.notfound-code{font-family:'AppTitles'; font-size:15px; color:var(--gold); letter-spacing:.08em; margin-bottom:8px;}
+.notfound-title{font-size:clamp(24px,4vw,32px); margin-bottom:12px;}
+.notfound-sub{color:var(--ink-soft); font-size:14px; line-height:1.8; max-width:380px; margin:0 auto;}
+.notfound-actions{display:flex; gap:10px; justify-content:center; margin-top:28px; flex-wrap:wrap;}
 .card .thumb img{width:100%; height:100%; object-fit:cover;}
 .card .body{padding:16px 18px 20px;}
 .card .kicker{font-size:11.5px; color:var(--gold); margin-bottom:6px; font-weight:600;}
@@ -143,6 +184,8 @@ img{max-width:100%; display:block;}
 
 /* ---- Breadcrumb / page head ---- */
 .crumb{display:flex; align-items:center; gap:6px; color:var(--ink-soft); font-size:13px; margin-bottom:18px; flex-wrap:wrap;}
+.back-btn{margin-bottom:14px;}
+.back-btn .icon svg{transform:scaleX(-1);}
 .crumb a:hover{color:var(--emerald);}
 .page-head{padding:40px 0 8px;}
 .page-head h1{font-size:clamp(26px,3.6vw,38px);}
@@ -247,12 +290,22 @@ img{max-width:100%; display:block;}
 .avatar-btn{width:34px; height:34px; border-radius:50%; overflow:hidden; border:1px solid var(--line); background:var(--emerald-soft); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--emerald); font-weight:700;}
 .avatar-btn img{width:100%; height:100%; object-fit:cover;}
 
-.footer{border-top:1px solid var(--line); padding:36px 0; margin-top:40px;}
+.footer{border-top:1px solid var(--line); padding:36px 0 calc(36px + env(safe-area-inset-bottom)); margin-top:40px;}
 .footer .wrap{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;}
 .footer p{color:var(--ink-soft); font-size:13px;}
 
 .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--canvas); padding:13px 22px; border-radius:100px; font-size:13.5px; z-index:200; opacity:0; pointer-events:none; transition:all .3s ease; box-shadow:var(--shadow-lift); display:flex; align-items:center; gap:8px;}
 .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.cookie-bar{
+  position:fixed; left:16px; right:16px; bottom:calc(16px + env(safe-area-inset-bottom));
+  z-index:150; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lift);
+  padding:16px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:space-between;
+  transform:translateY(140%); transition:transform .35s ease; max-width:520px; margin:0 auto;
+}
+.cookie-bar.show{transform:translateY(0);}
+.cookie-bar p{font-size:12.5px; color:var(--ink-soft); flex:1; min-width:200px; line-height:1.7;}
 
 /* text-block animations settable per segment from the admin panel */
 @keyframes anim-fade{from{opacity:0;}to{opacity:1;}}
@@ -297,6 +350,7 @@ img{max-width:100%; display:block;}
     <div class="nav-links">
       <a href="#/">الرئيسية</a>
       <a href="#tracks-anchor" data-route="">المسارات</a>
+      <a href="#/leaderboard">المتصدرون</a>
       <a href="#/dashboard">لوحتي</a>
     </div>
     <div class="nav-actions" id="navActions">
@@ -306,6 +360,7 @@ img{max-width:100%; display:block;}
   </div>
 </nav>
 
+<div id="topLoader"></div>
 <main id="appRoot"></main>
 
 <footer class="footer">
@@ -400,6 +455,11 @@ img{max-width:100%; display:block;}
 
 <div class="toast" id="toast"></div>
 
+<div class="cookie-bar" id="cookieBar">
+  <p>نستخدم ملفات تعريف الارتباط (Cookies) للحفاظ على تسجيل دخولك وتحسين تجربتك في رقيم.</p>
+  <button class="btn btn-primary btn-sm" id="cookieAcceptBtn">حسنًا، فهمت</button>
+</div>
+
 <!-- ============ FIREBASE SDKS (compat build — works with a plain script tag, no bundler needed) ============ -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -482,6 +542,12 @@ const ICONS = {
   upload:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M8 8l4-4 4 4M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>`,
   user:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>`,
   book:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 5.5v15.5"/></svg>`,
+  heart:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.2s-7.3-4.6-9.6-9A5.2 5.2 0 0 1 12 6.4 5.2 5.2 0 0 1 21.6 11.2c-2.3 4.4-9.6 9-9.6 9z"/></svg>`,
+  heartFill:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.2s-7.3-4.6-9.6-9A5.2 5.2 0 0 1 12 6.4 5.2 5.2 0 0 1 21.6 11.2c-2.3 4.4-9.6 9-9.6 9z"/></svg>`,
+  megaphone:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4a1 1 0 0 0 1 1h2l3.2 4.2c.5.6 1.5.3 1.5-.5V5.3c0-.8-1-1.1-1.5-.5L6 9H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a4.5 4.5 0 0 1 0 7M18.3 6a8.5 8.5 0 0 1 0 12"/></svg>`,
+  broadcast:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.6"/><path d="M7.5 8.5a6.4 6.4 0 0 0 0 7M16.5 8.5a6.4 6.4 0 0 1 0 7M4.5 5.5a10.8 10.8 0 0 0 0 13M19.5 5.5a10.8 10.8 0 0 1 0 13"/></svg>`,
+  chat:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v11H9l-4 3.5v-3.5H4z"/></svg>`,
+  trophy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.5A2.5 2.5 0 0 0 5 10.4M17 5.5h2.5A2.5 2.5 0 0 1 19 10.4"/><path d="M10 15.5h4v2.5h-4zM8 21h8"/></svg>`,
 };
 function icon(name){ return `<span class="icon">${ICONS[name]||''}</span>`; }
 
@@ -491,12 +557,11 @@ function icon(name){ return `<span class="icon">${ICONS[name]||''}</span>`; }
 firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
 const fbAuth = firebase.auth();
 const fbDb = firebase.firestore();
-// See the SESSION-PERSIST note above: browser persistence relies on
-// indexedDB/localStorage, which Claude's in-chat artifact runtime blocks.
-// NONE keeps everything working within a single page session; switch to
-// firebase.auth.Auth.Persistence.LOCAL once this is hosted on your own domain
-// so users stay signed in across visits.
-fbAuth.setPersistence(firebase.auth.Auth.Persistence.NONE).catch(err => console.error(err));
+// Persistent sessions: now that this runs on raqeem.qd.je (a real hosted
+// domain, not Claude's in-chat preview), Firebase can safely use LOCAL
+// persistence — the student stays signed in across visits/tabs until they
+// explicitly log out via the dashboard.
+fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.error(err));
 
 const DB = {
   async listAll(collection, whereField, whereValue){
@@ -617,8 +682,16 @@ const authOverlay = document.getElementById('authOverlay');
 const authTitle = document.getElementById('authTitle');
 const loginPanel = document.getElementById('loginPanel');
 const signupPanel = document.getElementById('signupPanel');
-function openAuth(tab){ authOverlay.classList.add('open'); setAuthTab(tab||'login'); }
-function closeAuth(){ authOverlay.classList.remove('open'); }
+function openAuth(tab){
+  authOverlay.classList.add('open'); setAuthTab(tab||'login');
+  // push a history entry so the phone's back button closes the modal
+  // instead of leaving the page entirely
+  history.pushState({ modal:'auth' }, '');
+}
+function closeAuth(){
+  authOverlay.classList.remove('open');
+  if (history.state && history.state.modal==='auth') history.back();
+}
 function setAuthTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   loginPanel.style.display = tab==='login' ? 'block':'none';
@@ -732,7 +805,14 @@ document.getElementById('googleBtn').addEventListener('click', async () => {
     }
     session.user = sessionFromUserRow(cred.user.uid, row);
     renderNavForUser(); closeAuth();
-    toast(session.user.profileComplete ? 'تم تسجيل الدخول بنجاح' : 'مرحبًا! أكمل بياناتك عند التسجيل بدورة أو الدفع');
+    if (!session.user.profileComplete) {
+      // mandatory now — the modal has no close button and no backdrop-dismiss,
+      // so the student must finish these fields before doing anything else.
+      document.getElementById('completeOverlay').classList.add('open');
+      toast('أكمل بياناتك للمتابعة');
+    } else {
+      toast('تم تسجيل الدخول بنجاح');
+    }
     router();
   } catch(e){ toast(dbFriendlyError(e)); }
 });
@@ -756,13 +836,21 @@ document.getElementById('completeSubmit').addEventListener('click', async () => 
   finally { btn.textContent='حفظ ومتابعة'; btn.disabled=false; }
 });
 fbAuth.onAuthStateChanged(async (user) => {
-  // Keeps the in-memory session in sync if Firebase's own auth state
-  // changes (e.g. after a popup sign-in resolves asynchronously).
+  // Keeps the in-memory session in sync with Firebase's own auth state —
+  // this is also what restores a persisted session on page load/reopen
+  // (LOCAL persistence), so the student doesn't have to sign in every visit.
   if (!user) return;
   if (session.user && session.user.uid === user.uid) return;
   try {
     const row = await loadUserDoc(user.uid);
-    if (row) { session.user = sessionFromUserRow(user.uid, row); renderNavForUser(); }
+    if (row) {
+      session.user = sessionFromUserRow(user.uid, row);
+      renderNavForUser();
+      // re-render the current route so auth-gated views (dashboard, payment)
+      // reflect the restored session instead of the logged-out state they
+      // may have already rendered before this async check resolved.
+      router();
+    }
   } catch(e){ console.error(e); }
 });
 function requireCompleteProfile(next){
@@ -778,15 +866,45 @@ const appRoot = document.getElementById('appRoot');
 function navigate(path){ location.hash = '#/' + path; }
 document.querySelectorAll('[data-route]').forEach(el=>el.addEventListener('click', ()=>navigate('')));
 
+/* ---- Smoothness: thin top progress bar + fade-in for every route change.
+   Purely additive — it watches appRoot for content swaps instead of having
+   to touch every render*() function, so nothing existing changes. ---- */
+const topLoader = document.getElementById('topLoader');
+function startTopLoader(){
+  topLoader.style.transition = 'none';
+  topLoader.style.width = '0%';
+  topLoader.style.opacity = '1';
+  void topLoader.offsetWidth; // force reflow so the next transition actually animates
+  topLoader.style.transition = 'width .5s cubic-bezier(.2,.7,.3,1), opacity .25s ease';
+  topLoader.style.width = '72%';
+}
+function doneTopLoader(){
+  topLoader.style.width = '100%';
+  setTimeout(() => { topLoader.style.opacity = '0'; }, 150);
+}
+new MutationObserver(() => {
+  appRoot.classList.remove('page-anim');
+  void appRoot.offsetWidth;
+  appRoot.classList.add('page-anim');
+}).observe(appRoot, { childList: true });
+
 function parseHash(){
   const h = (location.hash || '#/').replace(/^#\/?/, '');
   const [name, param] = h.split('/');
   return { name: name || 'home', param };
 }
 window.addEventListener('hashchange', router);
+window.addEventListener('popstate', (e) => {
+  // supports the phone's physical/gesture back button: if a modal is open
+  // and back is pressed, close the modal instead of exiting the page.
+  if (!(e.state && e.state.modal) && authOverlay.classList.contains('open')) {
+    authOverlay.classList.remove('open');
+  }
+});
 async function router(){
   const { name, param } = parseHash();
-  window.scrollTo(0,0);
+  window.scrollTo({ top:0, left:0, behavior:'instant' });
+  startTopLoader();
   try {
     if (name==='home') await renderHome();
     else if (name==='track') await renderTrack(param);
@@ -797,9 +915,12 @@ async function router(){
     else if (name==='payment') await renderPayment(param);
     else if (name==='certificate') await renderCertificate(param);
     else if (name==='dashboard') await renderDashboard();
-    else appRoot.innerHTML = emptyState('الصفحة غير موجودة', 'تحقق من الرابط أو عد إلى الرئيسية');
+    else if (name==='leaderboard') await renderLeaderboard();
+    else appRoot.innerHTML = render404();
   } catch (e) {
     appRoot.innerHTML = emptyState('تعذّر تحميل الصفحة', dbFriendlyError(e));
+  } finally {
+    doneTopLoader();
   }
 }
 function emptyState(title, sub){
@@ -809,6 +930,24 @@ function emptyState(title, sub){
     <button class="btn btn-ghost" onclick="navigate('')">${icon('chevron')} العودة للرئيسية</button>
   </div>`;
 }
+function render404(){
+  return `<div class="wrap section notfound-wrap">
+    <div class="notfound-isnad">
+      <div class="node done"><div class="dot"></div></div><div class="thread"></div>
+      <div class="node done"><div class="dot"></div></div><div class="thread"></div>
+      <div class="node"><div class="dot"></div></div><div class="thread"></div>
+      <div class="node"><div class="dot"></div></div>
+    </div>
+    <div class="notfound-mark">${icon('book')}</div>
+    <div class="notfound-code">٤٠٤</div>
+    <h1 class="notfound-title">انقطع السند هنا</h1>
+    <p class="notfound-sub">الصفحة اللي بتدوّر عليها مش موجودة، أو الرابط اتغيّر. تأكد من الرابط أو ارجع لنقطة معروفة.</p>
+    <div class="notfound-actions">
+      <button class="btn btn-primary" onclick="navigate('')">${icon('chevron')} الرئيسية</button>
+      <button class="btn btn-ghost" onclick="history.back()">رجوع للصفحة السابقة</button>
+    </div>
+  </div>`;
+}
 function crumb(items){
   return `<div class="crumb">${items.map((it,i)=>`${i>0?icon('chevron'):''}${it.href?`<a href="${it.href}">${escapeHtml(it.label)}</a>`:`<span>${escapeHtml(it.label)}</span>`}`).join('')}</div>`;
 }
@@ -816,10 +955,14 @@ function shareRow(path){
   const url = `${location.origin}${location.pathname}#/${path}`;
   return `<div class="share-row"><button class="btn btn-ghost btn-sm" onclick="copyText('${url}')">${icon('link')} نسخ رابط مباشر</button></div>`;
 }
+function backButton(){
+  return `<button class="btn btn-ghost btn-sm back-btn" onclick="history.back()">${icon('chevron')} رجوع</button>`;
+}
 
 /* ---------------- HOME ---------------- */
 async function renderHome(){
   appRoot.innerHTML = `
+  <div class="wrap" id="announcementsHost"></div>
   <header class="hero wrap">
     <div class="hero-eyebrow">منصة تعليم إسلامي متكاملة</div>
     <h1>اطلب العلم <em>سندًا</em> بعد سند،<br>حتى يُختم لك برقيم.</h1>
@@ -836,6 +979,10 @@ async function renderHome(){
       <div class="node"><div class="dot"></div><span class="lbl">الإسناد</span></div>
     </div>
   </header>
+  <section class="section wrap" id="liveSessionsSection" style="display:none;">
+    <div class="section-head"><h2>${icon('broadcast')} الجلسات المباشرة القادمة</h2></div>
+    <div class="list" id="liveSessionsList"></div>
+  </section>
   <section class="section wrap" id="tracks-anchor">
     <div class="section-head"><h2>المسارات</h2></div>
     <div class="grid" id="tracksGrid">${skeletonCards(3)}</div>
@@ -845,16 +992,57 @@ async function renderHome(){
     <div class="grid" id="coursesGrid">${skeletonCards(3)}</div>
   </section>`;
   document.getElementById('heroStart').addEventListener('click', ()=> session.user ? navigate('') : openAuth('signup'));
-  loadTracksGrid(); loadCoursesGrid();
+  loadTracksGrid(); loadCoursesGrid(); loadAnnouncements(); loadLiveSessions();
+}
+
+/* ---- Feature 1: Announcements (admin-managed banner) ---- */
+async function loadAnnouncements(){
+  const host = document.getElementById('announcementsHost'); if(!host) return;
+  try {
+    const items = await DB.listAll('Announcements', 'active', 'TRUE');
+    if (!items.length) return;
+    host.innerHTML = items.map(a => `
+      <div class="announce-banner" data-id="${a.id}">
+        <span class="icon">${ICONS.megaphone}</span>
+        <div class="announce-text">
+          <strong>${escapeHtml(a.title_ar||'')}</strong>
+          <span>${escapeHtml(a.message_ar||'')}</span>
+        </div>
+        ${a.link_url ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(a.link_url)}" target="_blank" rel="noopener">التفاصيل</a>` : ''}
+        <button class="announce-close" onclick="this.closest('.announce-banner').remove()">${icon('chevron')}</button>
+      </div>`).join('');
+  } catch(e){ console.error(e); }
+}
+
+/* ---- Feature 2: Live sessions schedule (admin-managed) ---- */
+async function loadLiveSessions(){
+  const section = document.getElementById('liveSessionsSection');
+  const list = document.getElementById('liveSessionsList');
+  if (!section || !list) return;
+  try {
+    const sessions = (await DB.listAll('LiveSessions')).filter(s => !s.start_time || new Date(s.start_time) > new Date(Date.now() - 2*60*60*1000));
+    if (!sessions.length) return;
+    section.style.display = 'block';
+    list.innerHTML = sessions.sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||'')).map(s => `
+      <div class="list-item" style="cursor:default;">
+        <div class="num">${icon('broadcast')}</div>
+        <div class="info">
+          <h4>${escapeHtml(s.title_ar||'')}</h4>
+          <span>${s.start_time ? new Date(s.start_time).toLocaleString('ar-EG', {dateStyle:'medium', timeStyle:'short'}) : ''} ${s.description_ar ? '· '+escapeHtml(s.description_ar) : ''}</span>
+        </div>
+        ${s.meeting_url ? `<a class="btn btn-primary btn-sm" href="${escapeHtml(s.meeting_url)}" target="_blank" rel="noopener">انضمام</a>` : ''}
+      </div>`).join('');
+  } catch(e){ console.error(e); }
 }
 function skeletonCards(n){ return Array.from({length:n}).map(()=>`<div class="card"><div class="thumb skel"></div><div class="body"><div class="kicker">&nbsp;</div><h3>&nbsp;</h3></div></div>`).join(''); }
 async function loadTracksGrid(){
   const grid = document.getElementById('tracksGrid'); if(!grid) return;
   try {
-    const tracks = await DB.listAll('Tracks');
+    const [tracks, bookmarkedIds] = await Promise.all([DB.listAll('Tracks'), getBookmarkedIds('track')]);
     grid.innerHTML = tracks.length ? tracks.map(t=>`
       <div class="card" onclick="navigate('track/${t.id}')">
-        <div class="thumb">${t.icon_url?`<img src="${escapeHtml(t.icon_url)}" alt="">`:icon('book')}</div>
+        <div class="thumb">${t.icon_url?`<img src="${escapeHtml(t.icon_url)}" alt="">`:icon('book')}
+          ${bookmarkBtn('track', t.id, bookmarkedIds.has(String(t.id)))}</div>
         <div class="body"><div class="kicker">مسار</div><h3>${escapeHtml(t.name_ar||'مسار')}</h3></div>
       </div>`).join('') : emptyState('لا توجد مسارات بعد','سيتم إضافتها قريبًا');
   } catch(e){ grid.innerHTML = emptyState('تعذّر تحميل المسارات', dbFriendlyError(e)); }
@@ -862,18 +1050,46 @@ async function loadTracksGrid(){
 async function loadCoursesGrid(){
   const grid = document.getElementById('coursesGrid'); if(!grid) return;
   try {
-    const courses = await DB.listAll('Courses');
+    const [courses, bookmarkedIds] = await Promise.all([DB.listAll('Courses'), getBookmarkedIds('course')]);
     grid.innerHTML = courses.length ? courses.slice(0,6).map(c=>`
       <div class="card" onclick="navigate('course/${c.id}')">
-        <div class="thumb">${c.cover_image_url?`<img src="${escapeHtml(c.cover_image_url)}" alt="">`:icon('book')}</div>
+        <div class="thumb">${c.cover_image_url?`<img src="${escapeHtml(c.cover_image_url)}" alt="">`:icon('book')}
+          ${bookmarkBtn('course', c.id, bookmarkedIds.has(String(c.id)))}</div>
         <div class="body"><div class="kicker">${escapeHtml(c.instructor_name||'')}</div><h3>${escapeHtml(c.title_ar||'دورة')}</h3></div>
       </div>`).join('') : emptyState('لا توجد دورات بعد','سيتم إضافتها قريبًا');
   } catch(e){ grid.innerHTML = emptyState('تعذّر تحميل الدورات', dbFriendlyError(e)); }
 }
 
+/* ---- Feature 3: Bookmarks / favorites ---- */
+async function getBookmarkedIds(itemType){
+  if (!session.user) return new Set();
+  try {
+    const rows = await DB.listAll('Bookmarks', 'user_id', session.user.uid);
+    return new Set(rows.filter(r=>r.item_type===itemType).map(r=>String(r.item_id)));
+  } catch(e){ return new Set(); }
+}
+function bookmarkBtn(itemType, itemId, active){
+  return `<button class="bookmark-btn ${active?'active':''}" onclick="event.stopPropagation(); toggleBookmark('${itemType}','${itemId}', this)">${icon(active?'heartFill':'heart')}</button>`;
+}
+async function toggleBookmark(itemType, itemId, btnEl){
+  if (!session.user){ openAuth('login'); return; }
+  const docId = `${session.user.uid}_${itemType}_${itemId}`;
+  const isActive = btnEl.classList.contains('active');
+  try {
+    if (isActive) {
+      await DB.remove('Bookmarks', docId);
+      btnEl.classList.remove('active'); btnEl.innerHTML = icon('heart');
+      if (currentTab==='bookmarks') loadDashPanel('bookmarks');
+    } else {
+      await DB.create('Bookmarks', { user_id:session.user.uid, item_type:itemType, item_id:itemId, created_at:new Date().toISOString() }, docId);
+      btnEl.classList.add('active'); btnEl.innerHTML = icon('heartFill');
+    }
+  } catch(e){ toast(dbFriendlyError(e)); }
+}
+
 /* ---------------- TRACK ---------------- */
 async function renderTrack(id){
-  appRoot.innerHTML = `<div class="wrap page-head">${crumb([{label:'الرئيسية',href:'#/'},{label:'المسار'}])}<h1 id="trackTitle">...</h1></div>
+  appRoot.innerHTML = `<div class="wrap page-head">${backButton()}${crumb([{label:'الرئيسية',href:'#/'},{label:'المسار'}])}<h1 id="trackTitle">...</h1></div>
   <div class="wrap section"><div class="grid" id="trackCourses">${skeletonCards(3)}</div></div>`;
   const tracks = await DB.listAll('Tracks');
   const track = tracks.find(t=>String(t.id)===String(id));
@@ -888,7 +1104,7 @@ async function renderTrack(id){
 
 /* ---------------- COURSE ---------------- */
 async function renderCourse(id){
-  appRoot.innerHTML = `<div class="wrap page-head">${crumb([{label:'الرئيسية',href:'#/'},{label:'الدورة'}])}
+  appRoot.innerHTML = `<div class="wrap page-head">${backButton()}${crumb([{label:'الرئيسية',href:'#/'},{label:'الدورة'}])}
     <h1 id="courseTitle">...</h1><p id="courseDesc"></p>${shareRow('course/'+id)}
     <div style="margin-top:18px;"><div class="progress-bar" id="courseProgressBar"><div style="width:0%"></div></div></div>
   </div>
@@ -922,9 +1138,14 @@ async function renderCourse(id){
 
 /* ---------------- LECTURE ---------------- */
 async function renderLecture(id){
-  appRoot.innerHTML = `<div class="wrap page-head">${crumb([{label:'الرئيسية',href:'#/'},{label:'المحاضرة'}])}
+  appRoot.innerHTML = `<div class="wrap page-head">${backButton()}${crumb([{label:'الرئيسية',href:'#/'},{label:'المحاضرة'}])}
     <h1 id="lectureTitle">...</h1>${shareRow('lecture/'+id)}</div>
-  <div class="wrap section"><div class="list" id="taskList"></div></div>`;
+  <div class="wrap section"><div class="list" id="taskList"></div></div>
+  <div class="wrap section" style="padding-top:0;">
+    <div class="section-head"><h2>${icon('chat')} أسئلة الطلاب</h2></div>
+    <div id="qaAskBox"></div>
+    <div class="list" id="qaList" style="margin-top:16px;"></div>
+  </div>`;
   const [lectures, tasks, progress] = await Promise.all([DB.listAll('Lectures'), DB.listAll('Tasks'), getUserProgress()]);
   const lecture = lectures.find(l=>String(l.id)===String(id));
   document.getElementById('lectureTitle').textContent = lecture ? lecture.title_ar : 'محاضرة غير موجودة';
@@ -943,11 +1164,46 @@ async function renderLecture(id){
       <div class="status-icon">${locked?icon('lock'):icon(typeIcon[t.type]||'text')}</div>
     </div>`;
   }).join('') : emptyState('لا توجد مهام بعد','ستُضاف قريبًا');
+
+  loadLectureQA(id);
+}
+
+/* ---- Feature 4: Q&A per lecture (students ask, admin answers) ---- */
+function loadLectureQA(lectureId){
+  const askBox = document.getElementById('qaAskBox');
+  askBox.innerHTML = session.user
+    ? `<div class="field"><textarea id="qaInput" placeholder="اكتب سؤالك عن هذه المحاضرة..." style="min-height:60px;"></textarea></div>
+       <button class="btn btn-primary btn-sm" id="qaSubmitBtn">${icon('chat')} إرسال السؤال</button>`
+    : `<button class="btn btn-ghost btn-sm" onclick="openAuth('login')">${icon('chat')} سجّل الدخول لطرح سؤال</button>`;
+  if (session.user) document.getElementById('qaSubmitBtn').addEventListener('click', async () => {
+    const val = document.getElementById('qaInput').value.trim();
+    if (!val){ toast('اكتب سؤالك أولًا'); return; }
+    const btn = document.getElementById('qaSubmitBtn');
+    btn.disabled = true; btn.textContent = '...جارٍ الإرسال';
+    try {
+      await DB.create('Questions', { lecture_id:lectureId, user_id:session.user.uid, user_name:session.user.name||'طالب', question:val, answer:'', answered:'FALSE', created_at:new Date().toISOString() });
+      toast('تم إرسال سؤالك، سيتم الرد عليه قريبًا');
+      document.getElementById('qaInput').value = '';
+      loadLectureQA(lectureId);
+    } catch(e){ toast(dbFriendlyError(e)); }
+    finally { btn.disabled = false; btn.innerHTML = `${icon('chat')} إرسال السؤال`; }
+  });
+
+  DB.listAll('Questions', 'lecture_id', lectureId).then(questions => {
+    const list = document.getElementById('qaList');
+    if (!list) return;
+    list.innerHTML = questions.length ? questions.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).map(q => `
+      <div class="qa-item">
+        <div class="qa-q">${icon('chat')} ${escapeHtml(q.question||'')}</div>
+        <div class="qa-meta">${escapeHtml(q.user_name||'طالب')} · ${escapeHtml((q.created_at||'').slice(0,10))}</div>
+        ${q.answer ? `<div class="qa-a">${icon('check')} ${escapeHtml(q.answer)}</div>` : `<div class="qa-meta" style="margin-top:8px;">لم يُجب عليه بعد</div>`}
+      </div>`).join('') : `<div class="hint" style="color:var(--ink-soft); font-size:13px;">لا توجد أسئلة بعد — كن أول من يسأل</div>`;
+  }).catch(e => console.error(e));
 }
 
 /* ---------------- TASK PLAYER ---------------- */
 async function renderTask(id){
-  appRoot.innerHTML = `<div class="wrap page-head">${crumb([{label:'الرئيسية',href:'#/'},{label:'المهمة'}])}<h1 id="taskTitle">...</h1>${shareRow('task/'+id)}</div>
+  appRoot.innerHTML = `<div class="wrap page-head">${backButton()}${crumb([{label:'الرئيسية',href:'#/'},{label:'المهمة'}])}<h1 id="taskTitle">...</h1>${shareRow('task/'+id)}</div>
   <div class="wrap section"><div id="taskBody"></div><div class="task-actions" id="taskActions"></div></div>`;
   const tasks = await DB.listAll('Tasks');
   const task = tasks.find(t=>String(t.id)===String(id));
@@ -968,8 +1224,37 @@ async function renderTask(id){
 
   const doneIds = new Set((await getUserProgress()).filter(p=>String(p.completed).toUpperCase()==='TRUE').map(p=>String(p.task_id)));
   const already = doneIds.has(String(id));
-  document.getElementById('taskActions').innerHTML = `<button class="btn btn-primary" id="completeTaskBtn" ${already?'disabled':''}>${already?icon('check')+' مكتملة':'وضع علامة إتمام'}</button>`;
-  if (!already) document.getElementById('completeTaskBtn').addEventListener('click', ()=> markTaskComplete(id));
+
+  // figure out the next task in this lecture so we can offer a "next" button
+  // right after this one is completed, instead of dropping the student back
+  // to the lecture list every time.
+  const siblingTasks = tasks.filter(t=>String(t.lecture_id)===String(task.lecture_id)).sort((a,b)=>(a.order||0)-(b.order||0));
+  const myIndex = siblingTasks.findIndex(t=>String(t.id)===String(id));
+  const nextTask = myIndex>=0 ? siblingTasks[myIndex+1] : null;
+  function nextButtonHtml(){
+    if (nextTask) {
+      const route = nextTask.type==='quiz' ? `quiz/${nextTask.id}` : `task/${nextTask.id}`;
+      return `<button class="btn btn-primary" onclick="navigate('${route}')">المهمة التالية ${icon('chevron')}</button>`;
+    }
+    return `<button class="btn btn-primary" onclick="navigate('lecture/${task.lecture_id}')">${icon('check')} العودة للمحاضرة</button>`;
+  }
+
+  document.getElementById('taskActions').innerHTML = already
+    ? `${icon('check')} <span style="color:var(--emerald); font-weight:600;">مكتملة</span> ${nextButtonHtml()}`
+    : `<button class="btn btn-primary" id="completeTaskBtn">وضع علامة إتمام</button>`;
+  if (!already) document.getElementById('completeTaskBtn').addEventListener('click', async ()=>{
+    await markTaskCompleteInline(id);
+    document.getElementById('taskActions').innerHTML = `${icon('check')} <span style="color:var(--emerald); font-weight:600;">مكتملة</span> ${nextButtonHtml()}`;
+  });
+}
+async function markTaskCompleteInline(taskId){
+  // like markTaskComplete, but resolves in place without re-routing, so the
+  // task page can immediately swap in the "next task" button
+  if (!session.user){ openAuth('login'); return; }
+  try {
+    await DB.create('UserProgress', { user_id: session.user.uid, user_email: session.user.email, task_id: taskId, completed:'TRUE', completed_at:new Date().toISOString() });
+    toast('أُنجزت المهمة بنجاح');
+  } catch(e){ toast(dbFriendlyError(e)); }
 }
 async function getUserProgress(){
   if (!session.user) return [];
@@ -986,7 +1271,7 @@ async function markTaskComplete(taskId){
 /* ---------------- QUIZ ---------------- */
 let quizState = null;
 async function renderQuiz(id){
-  appRoot.innerHTML = `<div class="wrap page-head">${crumb([{label:'الرئيسية',href:'#/'},{label:'اختبار'}])}<h1 id="quizTitle">...</h1></div>
+  appRoot.innerHTML = `<div class="wrap page-head">${backButton()}${crumb([{label:'الرئيسية',href:'#/'},{label:'اختبار'}])}<h1 id="quizTitle">...</h1></div>
   <div class="wrap section" id="quizBody">${emptyState('جارٍ التحميل...','')}</div>`;
   const tasks = await DB.listAll('Tasks');
   const task = tasks.find(t=>String(t.id)===String(id));
@@ -1055,10 +1340,26 @@ async function submitQuiz(){
   quizState.questions.forEach((q,qi) => { if (quizState.answers[qi] === q.correct) correct++; });
   const score = Math.round(100*correct/total);
   const passed = score >= quizState.passPercent;
+  let nextButtonHtml = `<button class="btn btn-primary" onclick="history.back()">متابعة</button>`;
   try {
     if (session.user){
       await DB.create('QuizAttempts', { user_id:session.user.uid, user_email:session.user.email, task_id:quizState.taskId, score, passed:passed?'TRUE':'FALSE', attempt_no:quizState.attemptNo, created_at:new Date().toISOString() });
-      if (passed) await markTaskComplete(quizState.taskId);
+      if (passed) {
+        await markTaskComplete(quizState.taskId);
+        // offer the next task in the same lecture, same as the task player does
+        const [thisTask, allTasks] = await Promise.all([DB.get('Tasks', quizState.taskId), DB.listAll('Tasks')]);
+        if (thisTask) {
+          const siblings = allTasks.filter(t=>String(t.lecture_id)===String(thisTask.lecture_id)).sort((a,b)=>(a.order||0)-(b.order||0));
+          const myIndex = siblings.findIndex(t=>String(t.id)===String(quizState.taskId));
+          const nextTask = myIndex>=0 ? siblings[myIndex+1] : null;
+          if (nextTask) {
+            const route = nextTask.type==='quiz' ? `quiz/${nextTask.id}` : `task/${nextTask.id}`;
+            nextButtonHtml = `<button class="btn btn-primary" onclick="navigate('${route}')">المهمة التالية ${icon('chevron')}</button>`;
+          } else {
+            nextButtonHtml = `<button class="btn btn-primary" onclick="navigate('lecture/${thisTask.lecture_id}')">${icon('check')} العودة للمحاضرة</button>`;
+          }
+        }
+      }
     }
   } catch(e){ console.error(e); }
   document.getElementById('quizBody').innerHTML = `
@@ -1066,8 +1367,8 @@ async function submitQuiz(){
       ${icon(passed?'badge':'quiz')}
       <div class="score">${score}%</div>
       <p style="color:var(--ink-soft); margin-top:10px;">${passed ? 'أحسنت! لقد اجتزت الاختبار' : `تحتاج ${quizState.passPercent}% على الأقل للنجاح`}</p>
-      <div style="margin-top:24px; display:flex; gap:10px; justify-content:center;">
-        ${passed ? `<button class="btn btn-primary" onclick="history.back()">متابعة</button>` : `<button class="btn btn-ghost" onclick="renderQuiz('${quizState.taskId}')">إعادة المحاولة</button>`}
+      <div style="margin-top:24px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        ${passed ? nextButtonHtml : `<button class="btn btn-ghost" onclick="renderQuiz('${quizState.taskId}')">إعادة المحاولة</button>`}
       </div>
     </div>`;
   quizState = null;
@@ -1076,16 +1377,20 @@ async function submitQuiz(){
 /* ---------------- PAYMENT ---------------- */
 async function renderPayment(){
   if (!requireCompleteProfile()) return;
-  appRoot.innerHTML = `<div class="wrap page-head">${crumb([{label:'الرئيسية',href:'#/'},{label:'الدفع والاشتراك'}])}<h1>${icon('wallet')} محفظتي واشتراكاتي</h1>
+  appRoot.innerHTML = `<div class="wrap page-head">${backButton()}${crumb([{label:'الرئيسية',href:'#/'},{label:'الدفع والاشتراك'}])}<h1>${icon('wallet')} محفظتي واشتراكاتي</h1>
     <p>اختر خطة الاشتراك ثم طريقة الدفع المناسبة لك.</p></div>
   <div class="wrap section">
     <div class="plan-grid">
-      <div class="plan-card"><h3>مسار واحد</h3><div class="price">حسب الدورة</div><p style="font-size:13px; color:var(--ink-soft)">وصول كامل لدورة واحدة</p></div>
-      <div class="plan-card featured"><h3>اشتراك شهري</h3><div class="price">اشترك الآن</div><p style="font-size:13px; color:var(--ink-soft)">وصول لكل المسارات والدورات</p></div>
-      <div class="plan-card"><h3>كود خصم</h3><div class="price">%</div><p style="font-size:13px; color:var(--ink-soft)">أدخل كوبونك عند الدفع</p></div>
+      <div class="plan-card"><h3>مسار واحد</h3><div class="price">حسب الدورة</div><p style="font-size:13px; color:var(--ink-soft)">وصول كامل لدورة واحدة</p>
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px;" onclick="document.getElementById('payMethodsAnchor').scrollIntoView({behavior:'smooth'})">اختيار</button></div>
+      <div class="plan-card featured"><h3>اشتراك شهري</h3><div class="price">اشترك الآن</div><p style="font-size:13px; color:var(--ink-soft)">وصول لكل المسارات والدورات</p>
+        <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="document.getElementById('payMethodsAnchor').scrollIntoView({behavior:'smooth'})">${icon('check')} اشتراك الآن</button></div>
+      <div class="plan-card"><h3>كود خصم</h3><div class="price">%</div><p style="font-size:13px; color:var(--ink-soft)">أدخل كوبونك عند الدفع</p>
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px;" onclick="document.getElementById('couponInput').focus()">إدخال كود</button></div>
     </div>
     <div class="field" style="max-width:320px; margin:8px 0 28px;"><label>كود خصم (إن وجد)</label><input type="text" id="couponInput" placeholder="مثال: RAQEEM10"></div>
 
+    <div id="payMethodsAnchor"></div>
     <div class="pay-grid">
       <div class="pay-opt active" data-method="paypal">${icon('paypal')}<h4>PayPal</h4></div>
       <div class="pay-opt" data-method="vodafone">${icon('phoneCash')}<h4>فودافون كاش</h4></div>
@@ -1164,6 +1469,45 @@ function bindProofUpload(method){
 }
 
 /* ---------------- CERTIFICATE VERIFICATION ---------------- */
+/* ---- Feature 5: Leaderboard (derived from progress + quiz data already
+   managed by the admin panel — top students by completed tasks & average
+   quiz score) ---- */
+async function renderLeaderboard(){
+  appRoot.innerHTML = `<div class="wrap page-head">${backButton()}<h1>${icon('trophy')} المتصدرون</h1>
+    <p>الترتيب مبني على عدد المهام المكتملة ومتوسط نتائج الاختبارات.</p></div>
+  <div class="wrap section"><div class="list" id="leaderList">${emptyState('جارٍ التحميل...','')}</div></div>`;
+  try {
+    const [users, progress, attempts] = await Promise.all([DB.listAll('Users'), DB.listAll('UserProgress'), DB.listAll('QuizAttempts')]);
+    const stats = {};
+    progress.forEach(p => {
+      if (String(p.completed).toUpperCase() !== 'TRUE') return;
+      stats[p.user_id] = stats[p.user_id] || { completed:0, scores:[] };
+      stats[p.user_id].completed++;
+    });
+    attempts.forEach(a => {
+      stats[a.user_id] = stats[a.user_id] || { completed:0, scores:[] };
+      if (typeof a.score === 'number') stats[a.user_id].scores.push(a.score);
+    });
+    const rows = Object.entries(stats).map(([uid, s]) => {
+      const user = users.find(u=>u.id===uid);
+      const avgScore = s.scores.length ? Math.round(s.scores.reduce((a,b)=>a+b,0)/s.scores.length) : 0;
+      const points = s.completed*10 + avgScore;
+      return { uid, name: user ? user.full_name : 'طالب', avatar: user ? user.avatar_url : '', completed: s.completed, avgScore, points };
+    }).filter(r => r.points > 0).sort((a,b)=>b.points-a.points).slice(0, 30);
+
+    const list = document.getElementById('leaderList');
+    list.innerHTML = rows.length ? rows.map((r,i) => {
+      const rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+      return `<div class="list-item" style="cursor:default;">
+        <div class="leader-rank ${rankClass}">${i+1}</div>
+        <div class="info"><h4>${escapeHtml(r.name||'طالب')}</h4><span>${r.completed} مهمة مكتملة · متوسط الاختبارات ${r.avgScore}%</span></div>
+        <div class="status-icon" style="color:var(--emerald); font-weight:700;">${r.points} نقطة</div>
+      </div>`;
+    }).join('') : emptyState('لا يوجد ترتيب بعد', 'أكمل مهامك واختباراتك لتظهر هنا');
+  } catch(e){ document.getElementById('leaderList').innerHTML = emptyState('تعذّر تحميل الترتيب', dbFriendlyError(e)); }
+}
+
+
 async function renderCertificate(code){
   appRoot.innerHTML = `<div class="wrap section">${emptyState('جارٍ التحقق...','')}</div>`;
   try {
@@ -1198,6 +1542,7 @@ async function renderDashboard(){
   <div class="wrap section dash-grid">
     <nav class="dash-nav">
       <button class="active" data-dtab="progress">${icon('book')} تقدّمي</button>
+      <button data-dtab="bookmarks">${icon('heartFill')} المفضلة</button>
       <button data-dtab="certs">${icon('badge')} شهاداتي</button>
       <button data-dtab="payments">${icon('wallet')} مدفوعاتي</button>
       <button data-dtab="profile">${icon('user')} الملف الشخصي</button>
@@ -1226,6 +1571,20 @@ async function loadDashPanel(tab){
         <div class="info"><h4>${escapeHtml(c.title_ar||'')}</h4><div class="progress-bar"><div style="width:${pct}%"></div></div></div>
         <div class="status-icon">${pct}%</div></div>`;
     }).join('') : emptyState('لا توجد دورات بعد','تصفّح الدورات وابدأ التعلّم');
+  } else if (tab==='bookmarks'){
+    const [bookmarks, tracks, courses] = await Promise.all([
+      session.user ? DB.listAll('Bookmarks', 'user_id', session.user.uid) : [],
+      DB.listAll('Tracks'), DB.listAll('Courses'),
+    ]);
+    panel.innerHTML = bookmarks.length ? bookmarks.map(b=>{
+      const item = b.item_type==='track' ? tracks.find(t=>t.id===b.item_id) : courses.find(c=>c.id===b.item_id);
+      if (!item) return '';
+      const title = b.item_type==='track' ? item.name_ar : item.title_ar;
+      return `<div class="list-item" onclick="navigate('${b.item_type}/${b.item_id}')">
+        <div class="num">${icon('heartFill')}</div>
+        <div class="info"><h4>${escapeHtml(title||'')}</h4><span>${b.item_type==='track'?'مسار':'دورة'}</span></div>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); toggleBookmark('${b.item_type}','${b.item_id}', this)">إزالة</button></div>`;
+    }).join('') : emptyState('لا توجد عناصر في المفضلة بعد','اضغط على أيقونة القلب في أي مسار أو دورة لحفظها هنا');
   } else if (tab==='certs'){
     const certs = session.user ? await DB.listAll('Certificates', 'user_id', session.user.uid) : [];
     panel.innerHTML = certs.length ? certs.map(c=>`
@@ -1268,10 +1627,26 @@ async function loadDashPanel(tab){
 }
 
 /* =====================================================================
+   COOKIE CONSENT
+   ===================================================================== */
+function initCookieConsent(){
+  const bar = document.getElementById('cookieBar');
+  let alreadyAccepted = false;
+  try { alreadyAccepted = localStorage.getItem('raqeem_cookie_consent') === 'accepted'; }
+  catch(e){ /* localStorage may be blocked in some embedded previews — default to showing the banner */ }
+  if (!alreadyAccepted) setTimeout(() => bar.classList.add('show'), 600);
+  document.getElementById('cookieAcceptBtn').addEventListener('click', () => {
+    bar.classList.remove('show');
+    try { localStorage.setItem('raqeem_cookie_consent', 'accepted'); } catch(e){ console.error(e); }
+  });
+}
+
+/* =====================================================================
    INIT
    ===================================================================== */
 document.getElementById('footYear').textContent = `© ${new Date().getFullYear()} رقيم`;
 renderNavForUser();
+initCookieConsent();
 router();
 </script>
 </body>
