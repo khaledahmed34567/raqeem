@@ -162,7 +162,7 @@ setTimeout(() => {
 // ===== USER DATA =====
 async function loadUserData(uid) {
   const snap = await db.collection('users').doc(uid).get();
-  if (snap.exists()) {
+  if (snap.exists) {
     currentUserData = snap.data();
     updateProfileUI();
   }
@@ -287,7 +287,7 @@ async function doGoogleSignIn() {
     const result = await auth.signInWithPopup(googleProvider);
     const user = result.user;
     const snap = await db.collection('users').doc(user.uid).get();
-    if (!snap.exists()) {
+    if (!snap.exists) {
       const parts = (user.displayName || '').split(' ');
       await db.collection('users').doc(user.uid).set({
         firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '',
@@ -547,7 +547,7 @@ function setupRoomListeners() {
 
   // room status
   const unsub1 = db.collection('rooms').doc(currentRoomId).onSnapshot((snap) => {
-    if (!snap.exists()) { exitRoom(); return; }
+    if (!snap.exists) { exitRoom(); return; }
     currentRoom = snap.data();
     updateRoomUI();
   });
