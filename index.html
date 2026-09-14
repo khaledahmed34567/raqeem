@@ -169,6 +169,10 @@
         <input class="field-input" id="quick-code" type="text" placeholder="كود الغرفة" style="flex:1;letter-spacing:4px;text-align:center;font-family:var(--font-display);font-size:1.1rem;text-transform:uppercase;" maxlength="6">
         <button class="btn-join" style="width:auto;padding:12px 20px;margin-bottom:0;" onclick="quickJoin()">انضم</button>
       </div>
+      <button class="share-room-btn" style="margin-top:10px;" onclick="openCreateRoomScreen()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        أنشئ غرفة جديدة
+      </button>
     </div>
 
     <div class="section-title">احدث الاشعارات</div>
@@ -234,7 +238,29 @@
       <div class="divider share-divider">او</div>
       <div class="share-hint">انضم عبر رابط مشاركة الغرفة</div>
     </div>
+    <div class="section-title" style="margin-top:18px;">غرف مباشرة الآن (للمشاهدة)</div>
+    <div style="padding:0 16px 16px;" id="live-rooms-list"><div class="spinner"></div></div>
   </div>
+
+  <!-- CREATE ROOM (any player) -->
+  <div class="screen" id="screen-create-room">
+    <div class="back-btn" style="position:relative;top:auto;right:auto;margin-bottom:20px;align-self:flex-end;" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="join-card">
+      <div class="join-title">أنشئ غرفة</div>
+      <div class="join-sub">سمّي غرفتك واختر لعبة أو أكتر</div>
+      <input class="field-input" id="create-room-name" placeholder="اسم الغرفة" style="margin-bottom:14px;">
+      <button class="share-room-btn" style="margin-bottom:14px;" onclick="pickRandomGameForRoom()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+        اختار لي
+      </button>
+      <div id="create-room-games-list" style="text-align:right;"><div class="spinner"></div></div>
+      <button class="btn-join" style="margin-top:14px;" onclick="createRoomByPlayer()">انشئ الغرفة</button>
+    </div>
+  </div>
+
+
 
   <!-- ROOM -->
   <div class="screen" id="screen-room">
@@ -274,6 +300,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
         شارك رابط الغرفة مع اصدقائك
       </button>
+      <button class="btn-join" id="btn-start-game" style="display:none;margin-top:14px;" onclick="startGameInRoom()">يلا نلعب</button>
     </div>
 
     <!-- active game -->
@@ -328,6 +355,7 @@
           <div class="vote-timer" id="vote-timer" style="display:none;"></div>
           <div class="vote-candidates" id="vote-candidates"></div>
           <button class="btn-vote" id="btn-submit-vote" onclick="submitVote()" disabled>ارسل تصويتك</button>
+          <button class="btn-join" id="btn-end-round-owner" style="display:none;margin-top:10px;" onclick="endRoundInRoom()">أنهِ الجولة</button>
         </div>
       </div>
 
@@ -405,7 +433,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     <span>الرئيسية</span>
   </div>
-  <div class="nav-item" id="nav-join" onclick="navigateTo('join')">
+  <div class="nav-item" id="nav-join" onclick="navigateTo('join');loadPublicRooms()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
     <span>انضم</span>
   </div>
@@ -444,6 +472,18 @@
   <div class="eliminated-sub">لقد تم التصويت ضدك وخرجت في هذا الراوند. يمكنك متابعة اللعبة كمشاهد</div>
   <button class="btn-spectate" onclick="goSpectator()">متابعة كمشاهد</button>
 </div>
+
+<!-- Character Reveal Overlay (private role card, shown only to the player it belongs to) -->
+<div class="eliminated-overlay" id="char-reveal-overlay">
+  <div class="eliminated-icon" style="animation:none;">
+    <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>
+  </div>
+  <div class="eliminated-title" style="color:var(--accent-gold);" id="char-reveal-name"></div>
+  <div class="eliminated-sub" id="char-reveal-bio"></div>
+  <div id="char-reveal-capo-tag" style="display:none;color:var(--accent-red-bright);font-size:0.85rem;letter-spacing:2px;margin-bottom:16px;">انت الكابو - حافظ على سرك</div>
+  <button class="btn-spectate" onclick="closeCharacterReveal()">فهمت</button>
+</div>
+
 
 <!-- Toast -->
 <div id="toast"></div>

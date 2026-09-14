@@ -29,6 +29,7 @@ let selectedVote = null;
 let currentRating = 0;
 let isEliminated = false;
 let isSpectator = false;
+let ownCharacterRevealed = null;
 let loginMethod = 'email';
 let roomListeners = [];
 
@@ -535,12 +536,295 @@ function enterRoom() {
   isEliminated = false;
   isSpectator = false;
   selectedVote = null;
+  ownCharacterRevealed = null;
   document.getElementById('room-code-display').textContent = currentRoom.code || '';
   document.getElementById('room-game-title').textContent = currentRoom.gameName || '';
   showScreen('room');
   setupRoomListeners();
   document.getElementById('bottom-nav').classList.remove('visible');
 }
+
+// ===== PLAYER-CREATED ROOMS =====
+let createRoomGamesCache = [];
+async function openCreateRoomScreen() {
+  navigateTo('create-room');
+  const list = document.getElementById('create-room-games-list');
+  list.innerHTML = '<div class="spinner"></div>';
+  try {
+    const snap = await db.collection('games').get();
+    createRoomGamesCache = [];
+    snap.forEach(d => createRoomGamesCache.push({ id: d.id, ...d.data() }));
+    renderCreateRoomGamesList();
+  } catch (e) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;">تعذر تحميل الالعاب</div>';
+  }
+}
+window.openCreateRoomScreen = openCreateRoomScreen;
+
+function renderCreateRoomGamesList() {
+  const list = document.getElementById('create-room-games-list');
+  const played = (currentUserData && currentUserData.playedGameIds) || [];
+  list.innerHTML = createRoomGamesCache.map(g =>
+    '<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border-subtle,#222230);border-radius:10px;margin-bottom:8px;">' +
+      '<input type="checkbox" class="create-room-game-cb" value="' + g.id + '">' +
+      '<span style="flex:1;">' + escapeHtml(g.name || 'لعبة') +
+        (played.indexOf(g.id) !== -1 ? '<span style="margin-right:8px;font-size:0.7rem;color:var(--text-muted);">لعبتها قبل كده</span>' : '') +
+      '</span>' +
+    '</label>'
+  ).join('') || '<div style="color:var(--text-muted);font-size:0.8rem;">لا توجد العاب متاحة</div>';
+}
+
+window.pickRandomGameForRoom = function() {
+  if (!createRoomGamesCache.length) { showToast('مفيش العاب متاحة'); return; }
+  document.querySelectorAll('.create-room-game-cb').forEach(cb => cb.checked = false);
+  const pick = createRoomGamesCache[Math.floor(Math.random() * createRoomGamesCache.length)];
+  const cb = document.querySelector('.create-room-game-cb[value="' + pick.id + '"]');
+  if (cb) cb.checked = true;
+  showToast('تم اختيار: ' + (pick.name || 'لعبة'));
+};
+
+function generatePlayerRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function createRoomByPlayer() {
+  if (!currentUser || !currentUserData) { showToast('سجل الدخول اولاً'); return; }
+  const name = (document.getElementById('create-room-name').value || '').trim() || 'غرفة بدون اسم';
+  const selectedIds = Array.from(document.querySelectorAll('.create-room-game-cb:checked')).map(cb => cb.value);
+  if (!selectedIds.length) { showToast('اختر لعبة واحدة على الاقل او اضغط اختار لي'); return; }
+  const firstGame = createRoomGamesCache.find(g => g.id === selectedIds[0]);
+  try {
+    const roomRef = db.collection('rooms').doc();
+    await roomRef.set({
+      name: name,
+      code: generatePlayerRoomCode(),
+      ownerUid: currentUser.uid,
+      gameIds: selectedIds,
+      currentGameIndex: 0,
+      currentGameId: selectedIds[0],
+      gameName: firstGame ? (firstGame.name || '') : '',
+      status: 'waiting',
+      currentRound: 0,
+      totalRounds: (firstGame && firstGame.rounds) || 5,
+      roundDone: false,
+      votingOpen: false,
+      eliminatedPlayers: [],
+      capoEliminated: false,
+      capoWon: false,
+      isPublic: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentRoomId = roomRef.id;
+    const roomSnap = await roomRef.get();
+    currentRoom = roomSnap.data();
+    const playerData = {
+      uid: currentUser.uid,
+      name: ((currentUserData.firstName || '') + ' ' + (currentUserData.lastName || '')).trim(),
+      alias: currentUserData.alias || 'PLAYER',
+      status: 'active',
+      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('rooms').doc(currentRoomId).collection('players').doc(currentUser.uid).set(playerData);
+    enterRoom();
+  } catch (e) {
+    console.error(e);
+    showToast('حدث خطأ في انشاء الغرفة');
+  }
+}
+window.createRoomByPlayer = createRoomByPlayer;
+
+async function loadPublicRooms() {
+  const el = document.getElementById('live-rooms-list');
+  if (!el) return;
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const snap = await db.collection('rooms').where('isPublic', '==', true).where('status', 'in', ['waiting', 'active']).limit(20).get();
+    if (snap.empty) { el.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;">لا توجد غرف نشطة الان</div>'; return; }
+    el.innerHTML = '';
+    snap.forEach(d => {
+      const r = d.data();
+      el.innerHTML += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border-subtle,#222230);border-radius:10px;margin-bottom:8px;">' +
+        '<div><div style="font-size:0.85rem;">' + escapeHtml(r.name || r.code || '') + '</div>' +
+        '<div style="font-size:0.7rem;color:var(--text-muted);">' + escapeHtml(r.gameName || '') + '</div></div>' +
+        '<button class="btn-join" style="width:auto;padding:8px 16px;margin-bottom:0;" onclick="enterSpectateRoom(\'' + d.id + '\')">مشاهدة</button>' +
+      '</div>';
+    });
+  } catch (e) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;">تعذر تحميل الغرف</div>';
+  }
+}
+window.loadPublicRooms = loadPublicRooms;
+
+async function enterSpectateRoom(roomId) {
+  try {
+    const doc = await db.collection('rooms').doc(roomId).get();
+    if (!doc.exists) { showToast('الغرفة غير موجودة'); return; }
+    currentRoomId = roomId;
+    currentRoom = doc.data();
+    isSpectator = true;
+    isEliminated = false;
+    ownCharacterRevealed = null;
+    document.getElementById('room-code-display').textContent = currentRoom.code || '';
+    document.getElementById('room-game-title').textContent = currentRoom.gameName || '';
+    showScreen('room');
+    setupRoomListeners();
+    document.getElementById('bottom-nav').classList.remove('visible');
+    document.getElementById('spectator-bar').classList.add('show');
+    document.getElementById('chat-input').disabled = true;
+  } catch (e) { showToast('تعذر فتح الغرفة'); }
+}
+window.enterSpectateRoom = enterSpectateRoom;
+
+// ===== ROUND / CHARACTER LOGIC (owner-driven) =====
+async function startGameInRoom() {
+  if (!currentRoom || !currentRoomId) return;
+  if (currentRoom.ownerUid !== currentUser.uid) { showToast('صاحب الغرفة بس يقدر يبدأ اللعبة'); return; }
+  try {
+    const gameDoc = await db.collection('games').doc(currentRoom.currentGameId).get();
+    if (!gameDoc.exists) { showToast('اللعبة غير موجودة'); return; }
+    const game = gameDoc.data();
+    const characters = (game.characters || []).filter(c => c.name);
+    if (!characters.length) { showToast('اللعبة دي لسه ملهاش شخصيات مضافة من لوحة التحكم'); return; }
+
+    const playersSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
+    const playerDocs = playersSnap.docs;
+    if (playerDocs.length < 2) { showToast('لازم على الاقل لاعبين اتنين'); return; }
+    if (characters.length < playerDocs.length) { showToast('عدد الشخصيات في اللعبة اقل من عدد اللاعبين'); return; }
+
+    const shuffled = characters.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+    }
+
+    const batch = db.batch();
+    playerDocs.forEach((pDoc, idx) => {
+      const ch = shuffled[idx];
+      batch.update(pDoc.ref, {
+        characterId: ch.id || ('c' + idx),
+        characterName: ch.name || '',
+        characterBio: ch.bio || '',
+        isCapo: !!ch.isCapo
+      });
+      batch.set(db.collection('users').doc(pDoc.id), {
+        playedGameIds: firebase.firestore.FieldValue.arrayUnion(currentRoom.currentGameId)
+      }, { merge: true });
+    });
+    batch.update(db.collection('rooms').doc(currentRoomId), {
+      status: 'active',
+      currentRound: 1,
+      roundDone: false,
+      votingOpen: true,
+      eliminatedPlayers: [],
+      capoEliminated: false,
+      capoWon: false,
+      totalRounds: game.rounds || 5,
+      gameName: game.name || ''
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error(e);
+    showToast('تعذر بدء اللعبة');
+  }
+}
+window.startGameInRoom = startGameInRoom;
+
+async function endRoundInRoom() {
+  if (!currentRoom || !currentRoomId) return;
+  if (currentRoom.ownerUid !== currentUser.uid) { showToast('صاحب الغرفة بس يقدر ينهي الجولة'); return; }
+  try {
+    const votesSnap = await db.collection('rooms').doc(currentRoomId).collection('votes').get();
+    if (votesSnap.empty) { showToast('محدش صوّت لسه'); return; }
+    const tally = {};
+    votesSnap.forEach(d => {
+      const t = d.data().targetUid;
+      tally[t] = (tally[t] || 0) + 1;
+    });
+    let maxCount = -1, topUids = [];
+    Object.keys(tally).forEach(uid => {
+      if (tally[uid] > maxCount) { maxCount = tally[uid]; topUids = [uid]; }
+      else if (tally[uid] === maxCount) { topUids.push(uid); }
+    });
+    const eliminatedUid = topUids[Math.floor(Math.random() * topUids.length)];
+
+    const playersSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
+    const allPlayers = playersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    const newEliminated = (currentRoom.eliminatedPlayers || []).slice();
+    if (newEliminated.indexOf(eliminatedUid) === -1) newEliminated.push(eliminatedUid);
+    const remainingCapos = allPlayers.filter(p => p.isCapo && newEliminated.indexOf(p.uid) === -1);
+
+    const batch = db.batch();
+    votesSnap.forEach(d => batch.delete(d.ref));
+    const roomRef = db.collection('rooms').doc(currentRoomId);
+
+    if (remainingCapos.length === 0) {
+      batch.update(roomRef, { eliminatedPlayers: newEliminated, capoEliminated: true, votingOpen: false, roundDone: true });
+    } else if ((currentRoom.currentRound || 1) >= (currentRoom.totalRounds || 5)) {
+      batch.update(roomRef, { eliminatedPlayers: newEliminated, capoWon: true, votingOpen: false, roundDone: true });
+    } else {
+      batch.update(roomRef, { eliminatedPlayers: newEliminated, currentRound: (currentRoom.currentRound || 1) + 1, roundDone: false, votingOpen: true });
+    }
+    await batch.commit();
+  } catch (e) {
+    console.error(e);
+    showToast('تعذر انهاء الجولة');
+  }
+}
+window.endRoundInRoom = endRoundInRoom;
+
+async function playNextGameInRoom() {
+  if (!currentRoom || !currentRoomId || currentRoom.ownerUid !== currentUser.uid) return;
+  try {
+    const gameIds = currentRoom.gameIds || [];
+    let nextIndex = (currentRoom.currentGameIndex || 0) + 1;
+    if (nextIndex >= gameIds.length) nextIndex = 0;
+    const nextGameId = gameIds[nextIndex];
+    const gameDoc = await db.collection('games').doc(nextGameId).get();
+    const game = gameDoc.exists ? gameDoc.data() : {};
+    const playersSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
+    const batch = db.batch();
+    playersSnap.forEach(d => {
+      batch.update(d.ref, {
+        characterId: firebase.firestore.FieldValue.delete(),
+        characterName: firebase.firestore.FieldValue.delete(),
+        characterBio: firebase.firestore.FieldValue.delete(),
+        isCapo: firebase.firestore.FieldValue.delete()
+      });
+    });
+    batch.update(db.collection('rooms').doc(currentRoomId), {
+      currentGameIndex: nextIndex,
+      currentGameId: nextGameId,
+      gameName: game.name || '',
+      totalRounds: game.rounds || 5,
+      status: 'waiting',
+      currentRound: 0,
+      roundDone: false,
+      votingOpen: false,
+      eliminatedPlayers: [],
+      capoEliminated: false,
+      capoWon: false
+    });
+    await batch.commit();
+    ownCharacterRevealed = null;
+  } catch (e) { console.error(e); }
+}
+window.playNextGameInRoom = playNextGameInRoom;
+
+function showCharacterReveal(p) {
+  const overlay = document.getElementById('char-reveal-overlay');
+  if (!overlay) return;
+  document.getElementById('char-reveal-name').textContent = p.characterName || '';
+  document.getElementById('char-reveal-bio').textContent = p.characterBio || '';
+  document.getElementById('char-reveal-capo-tag').style.display = p.isCapo ? 'block' : 'none';
+  overlay.classList.add('show');
+}
+window.closeCharacterReveal = function() {
+  const overlay = document.getElementById('char-reveal-overlay');
+  if (overlay) overlay.classList.remove('show');
+};
 
 function setupRoomListeners() {
   clearRoomListeners();
@@ -583,6 +867,17 @@ function setupRoomListeners() {
     renderVotes(snap);
   });
   roomListeners.push(unsub4);
+
+  // own character (private role reveal - only this player sees it)
+  const unsub5 = db.collection('rooms').doc(currentRoomId).collection('players').doc(currentUser.uid).onSnapshot((snap) => {
+    if (!snap.exists) return;
+    const p = snap.data();
+    if (p.characterId && p.characterId !== ownCharacterRevealed) {
+      ownCharacterRevealed = p.characterId;
+      showCharacterReveal(p);
+    }
+  });
+  roomListeners.push(unsub5);
 }
 
 function clearRoomListeners() {
@@ -606,11 +901,15 @@ function updateRoomUI() {
     document.getElementById('waiting-screen').style.display = 'flex';
     document.getElementById('active-game-area').style.display = 'none';
     document.getElementById('game-ended-screen').classList.remove('show');
+    const startBtn = document.getElementById('btn-start-game');
+    if (startBtn) startBtn.style.display = (currentRoom.ownerUid === currentUser.uid) ? 'block' : 'none';
   } else if (status === 'active') {
     document.getElementById('waiting-screen').style.display = 'none';
     document.getElementById('active-game-area').style.display = 'flex';
     document.getElementById('game-ended-screen').classList.remove('show');
     loadClues(round);
+    const endRoundBtn = document.getElementById('btn-end-round-owner');
+    if (endRoundBtn) endRoundBtn.style.display = (currentRoom.ownerUid === currentUser.uid) ? 'block' : 'none';
     if (currentRoom.votingOpen) {
       document.getElementById('vote-badge').classList.add('show');
       document.getElementById('vote-round-info').textContent = 'صوت على من تعتقد انه كابو - جولة ' + round;
@@ -638,6 +937,10 @@ function updateRoomUI() {
 
   // check if capo was eliminated (game over early)
   if (currentRoom.capoEliminated) {
+    showGameEnded();
+  }
+  // check if capo(s) survived to the last round
+  if (currentRoom.capoWon) {
     showGameEnded();
   }
 }
@@ -767,7 +1070,10 @@ function renderVotes(snap) {
 }
 
 function selectVote(uid) {
-  if (isEliminated && !isSpectator) return;
+  // كان الشرط بيمنع التصويت للمقصيين اللي مش في وضع المشاهدة فقط، وده كان بيسمح
+  // (1) للاعب المقصي اللي دخل وضع المشاهدة انه يصوت برضو، و(2) لأي حد بيتفرج على غرفة مش لاعب فيها
+  // إنه يصوت. اتصلحت هنا عشان "ميعرفش يتحكم أو يلعب" فعلاً تنطبق على كل مشاهد وكل مقصي
+  if (isEliminated || isSpectator) return;
   if (!currentRoom || !currentRoom.votingOpen) return;
   selectedVote = uid;
   document.querySelectorAll('.vote-candidate').forEach(el => {
@@ -873,6 +1179,10 @@ function playAgain() {
   isSpectator = false;
   document.getElementById('spectator-bar').classList.remove('show');
   document.getElementById('chat-input').disabled = false;
+  // لو صاحب الغرفة، جهّز اللعبة التالية في نفس الغرفة (أو أعد نفس اللعبة لو مفيش ألعاب تانية)
+  if (currentRoom && currentUser && currentRoom.ownerUid === currentUser.uid) {
+    playNextGameInRoom();
+  }
 }
 
 // ===== ROOM TABS =====
