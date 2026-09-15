@@ -2268,7 +2268,9 @@ img { pointer-events: none; -webkit-user-drag: none; }
 .char-preview-bio { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
 
 .wallet-card { padding: 16px; }
-.wallet-balance-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wallet-balance-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.wallet-balance-row > div:first-child { min-width: 0; flex: 1 1 auto; }
+.wallet-balance-row > button { flex-shrink: 0; }
 .wallet-balance-amount { font-size: 1.4rem; font-weight: 700; color: var(--accent-gold); margin-top: 4px; }
 .wallet-locked-note {
   font-size: 0.68rem;

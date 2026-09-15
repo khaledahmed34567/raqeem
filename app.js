@@ -30,6 +30,7 @@ let currentUserData = null;
 let currentRoom = null;
 let currentRoomId = null;
 let currentGameData = null;
+let currentGamePriceAfterDiscount = 0;
 let selectedGameId = null;
 let selectedVote = null;
 let currentRating = 0;
@@ -625,6 +626,7 @@ function showGameDetail(g) {
   const diff = DIFFICULTY_MAP[g.difficulty] || DIFFICULTY_MAP.medium;
   document.getElementById('detail-difficulty').textContent = diff[0];
   const isPaid = g.price && parseFloat(g.price) > 0;
+  currentGamePriceAfterDiscount = isPaid ? parseFloat(g.price) : 0;
   document.getElementById('detail-price').textContent = isPaid ? g.price + ' جنيه' : 'مجاني';
   document.getElementById('coupon-section').style.display = isPaid ? 'block' : 'none';
   document.getElementById('paypal-button-container').innerHTML = '';
@@ -644,15 +646,62 @@ function showGameDetail(g) {
 
   const purchased = currentUserData && (currentUserData.purchasedGames || []).includes(g.id);
   const actionBtn = document.getElementById('detail-action-btn');
+  const walletPayBtn = document.getElementById('detail-wallet-pay-btn');
   if (!isPaid || purchased) {
     actionBtn.textContent = 'انضم لغرفة';
     actionBtn.onclick = function() { navigateTo('join'); };
+    walletPayBtn.style.display = 'none';
   } else {
     actionBtn.textContent = 'اشتر الان - ' + g.price + ' جنيه';
     actionBtn.onclick = function() { initPayPal(g); };
+    walletPayBtn.style.display = 'flex';
+    updateWalletPayButton();
   }
   navigateTo('game-detail');
 }
+
+// بيحدّث نص وحالة زرار "ادفع من المحفظة" حسب السعر بعد الخصم (لو اتطبق كوبون) ورصيد المحفظة الحالي
+function updateWalletPayButton() {
+  const walletPayBtn = document.getElementById('detail-wallet-pay-btn');
+  if (!walletPayBtn || walletPayBtn.style.display === 'none') return;
+  const balance = (currentUserData && currentUserData.walletBalance) || 0;
+  const price = currentGamePriceAfterDiscount;
+  walletPayBtn.textContent = 'ادفع من المحفظة - ' + price.toFixed(2) + ' جنيه';
+  walletPayBtn.disabled = balance < price;
+  walletPayBtn.title = balance < price ? 'رصيدك في المحفظة مش كافي - اشحن الأول من صفحة حسابي' : '';
+}
+window.updateWalletPayButton = updateWalletPayButton;
+
+// دفع سعر اللعبة (بعد أي خصم كوبون) من رصيد المحفظة مباشرة
+async function payGameWithWallet() {
+  if (!currentUser || !currentUserData || !currentGameData) return;
+  const g = currentGameData;
+  const price = currentGamePriceAfterDiscount;
+  const balance = currentUserData.walletBalance || 0;
+  if (balance < price) { showToast('رصيدك في المحفظة مش كافي - اشحن الأول من صفحة حسابي'); return; }
+  const walletPayBtn = document.getElementById('detail-wallet-pay-btn');
+  walletPayBtn.disabled = true;
+  try {
+    await db.collection('users').doc(currentUser.uid).update({
+      walletBalance: firebase.firestore.FieldValue.increment(-price),
+      purchasedGames: firebase.firestore.FieldValue.arrayUnion(g.id)
+    });
+    currentUserData.walletBalance = balance - price;
+    currentUserData.purchasedGames = (currentUserData.purchasedGames || []).concat([g.id]);
+    const walletEl = document.getElementById('wallet-balance-amount');
+    if (walletEl) walletEl.textContent = currentUserData.walletBalance + ' جنيه';
+    showToast('تم الدفع من المحفظة - اللعبة بقت ملكك دايمًا');
+    walletPayBtn.style.display = 'none';
+    document.getElementById('coupon-section').style.display = 'none';
+    const actionBtn = document.getElementById('detail-action-btn');
+    actionBtn.textContent = 'انضم لغرفة';
+    actionBtn.onclick = function() { navigateTo('join'); };
+  } catch (e) {
+    walletPayBtn.disabled = false;
+    showToast('تعذر إتمام الدفع من المحفظة');
+  }
+}
+window.payGameWithWallet = payGameWithWallet;
 
 function handlePlayNowClick() {
   if (!currentGameData) return;
@@ -740,9 +789,10 @@ function initPayPal(g) {
 }
 function renderPayPal(g) {
   document.getElementById('paypal-button-container').innerHTML = '';
+  const chargeAmount = currentGamePriceAfterDiscount || parseFloat(g.price || '1');
   window.paypal.Buttons({
     createOrder: function(data, actions) {
-      return actions.order.create({ purchase_units: [{ amount: { value: String(g.price || '1') } }] });
+      return actions.order.create({ purchase_units: [{ amount: { value: String(chargeAmount) } }] });
     },
     onApprove: async function(data, actions) {
       await actions.order.capture();
@@ -816,6 +866,10 @@ async function applyCoupon() {
     } else {
       const newPrice = (parseFloat(currentGameData.price || 0) * (1 - discount/100)).toFixed(2);
       document.getElementById('detail-price').textContent = newPrice + ' جنيه (بعد الخصم)';
+      currentGamePriceAfterDiscount = parseFloat(newPrice);
+      const actionBtn = document.getElementById('detail-action-btn');
+      if (actionBtn) actionBtn.textContent = 'اشتر الان - ' + newPrice + ' جنيه';
+      updateWalletPayButton();
       showToast('تم تطبيق خصم ' + discount + '%');
     }
   } catch (e) { showToast('خطأ في تطبيق الكود'); }
