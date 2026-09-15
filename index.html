@@ -256,7 +256,7 @@
       </div>
 
       <div id="detail-characters-section" style="display:none;margin:4px 0 16px;">
-        <div class="section-title" style="padding:0 0 10px;">🎭 شخصيات القضية</div>
+        <div class="section-title" style="padding:0 0 10px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg> شخصيات القضية</div>
         <div class="detail-characters-list" id="detail-characters-list"></div>
       </div>
 
@@ -267,7 +267,7 @@
         </div>
       </div>
 
-      <button class="btn-buy" id="detail-playnow-btn" style="background:linear-gradient(135deg,#2d6a4f,#1b4332);margin-bottom:10px;" onclick="handlePlayNowClick()">🎮 يلا نلعب - أنشئ غرفة لهذه اللعبة</button>
+      <button class="btn-buy" id="detail-playnow-btn" style="background:linear-gradient(135deg,#2d6a4f,#1b4332);margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;" onclick="handlePlayNowClick()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="10" rx="4"/><path d="M7 10v4M5 12h4"/><circle cx="16" cy="10.5" r="1"/><circle cx="18.5" cy="13" r="1"/></svg> يلا نلعب - أنشئ غرفة لهذه اللعبة</button>
       <button class="btn-buy" id="detail-action-btn" onclick="handleGameAction()">العب الان</button>
       <div id="paypal-button-container"></div>
       <button class="share-room-btn" style="margin-top:12px;width:100%;justify-content:center;" onclick="shareGameLink()">
@@ -488,7 +488,7 @@
       <div class="result-title" id="result-title"></div>
       <div class="result-sub" id="result-sub"></div>
       <button class="btn-primary" style="width:auto;padding:13px 30px;margin-bottom:10px;" onclick="playAgain()">العب مرة اخرى</button>
-      <button class="btn-google" style="margin-top:0;margin-bottom:10px;" onclick="playDifferentGame()">🎲 جرب لعبة تانية</button>
+      <button class="btn-google" style="margin-top:0;margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;" onclick="playDifferentGame()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg> جرب لعبة تانية</button>
       <button class="btn-google" style="margin-top:0;" onclick="exitRoom()">الخروج من الغرفة</button>
     </div>
   </div>
@@ -568,7 +568,7 @@
     <div class="back-btn" style="position:relative;top:auto;right:auto;margin-bottom:14px;align-self:flex-end;" onclick="goBack()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-    <div class="notif-header-title" style="padding:0 16px 12px;">أبرز اللاعبين 🏆</div>
+    <div class="notif-header-title" style="padding:0 16px 12px;display:flex;align-items:center;gap:8px;">أبرز اللاعبين <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 21h8M12 17v4M17 4H7v5a5 5 0 0010 0V4z"/><path d="M17 5h2a2 2 0 012 2 3 3 0 01-3 3M7 5H5a2 2 0 00-2 2 3 3 0 003 3"/></svg></div>
     <div style="padding:0 16px 8px;color:var(--text-muted);font-size:0.78rem;">اللاعبين اللي فازوا في أكتر من 3 العاب</div>
     <div id="top-players-list" style="padding:12px 16px 30px;"></div>
   </div>

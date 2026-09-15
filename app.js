@@ -103,18 +103,23 @@ initSmoke();
 
 // ===== PWA MANIFEST =====
 function setupManifest() {
+  const appUrl = window.location.origin + window.location.pathname;
   const manifest = {
+    id: appUrl,
     name: "Capo - لعبة التحقيق",
     short_name: "Capo",
     description: "لعبة التحقيق والجريمة",
-    start_url: window.location.href,
+    start_url: appUrl,
+    scope: appUrl,
     display: "standalone",
     background_color: "#050508",
     theme_color: "#0a0a0f",
     orientation: "portrait",
     icons: [
-      { src: "https://i.ibb.co/cX7FVw1b/icon.png", sizes: "192x192", type: "image/png" },
-      { src: "https://i.ibb.co/cX7FVw1b/icon.png", sizes: "512x512", type: "image/png" }
+      { src: "https://i.ibb.co/cX7FVw1b/icon.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "https://i.ibb.co/cX7FVw1b/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "https://i.ibb.co/cX7FVw1b/icon.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "https://i.ibb.co/cX7FVw1b/icon.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
     ]
   };
   const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
@@ -629,20 +634,9 @@ function showGameDetail(g) {
   document.getElementById('detail-rating-summary').innerHTML = buildStaticStars(avg)
     + '<span class="drs-count">' + (ratingCount ? (avg.toFixed(1) + ' (' + ratingCount + ' تقييم) - اتلعبت ' + (g.playsCount || 0) + ' مرة') : 'لسه معملهاش حد تقييم') + '</span>';
 
+  // شخصيات القضية سر للاعب لحد ما يدخل اللعبة فعلاً - مبتتعرضش في شاشة التفاصيل قبل الدخول
   const charsSection = document.getElementById('detail-characters-section');
-  const characters = g.characters || [];
-  if (characters.length) {
-    document.getElementById('detail-characters-list').innerHTML = characters.map(function(c) {
-      return '<div class="char-preview-card">'
-        + '<div class="char-preview-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg></div>'
-        + '<div><div class="char-preview-name">' + escapeHtml(c.name || 'شخصية') + '</div>'
-        + (c.bio ? '<div class="char-preview-bio">' + escapeHtml(c.bio) + '</div>' : '')
-        + '</div></div>';
-    }).join('');
-    charsSection.style.display = 'block';
-  } else {
-    charsSection.style.display = 'none';
-  }
+  charsSection.style.display = 'none';
 
   currentDetailRating = 0;
   document.querySelectorAll('#detail-stars-row .star-btn').forEach(b => b.classList.remove('active'));
@@ -1909,13 +1903,13 @@ function showGameEnded() {
   } else if (iWon) {
     resultIcon.className = 'game-result-icon result-win';
     resultIcon.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-    resultTitle.textContent = 'مبروك! ربحت 🎉';
+    resultTitle.textContent = 'مبروك! ربحت';
     resultTitle.style.color = '#7ecba4';
     resultSub.textContent = capoWon ? 'نجحت تختبي من الكل لحد النهاية - انت كابو محترف' : 'كشفت كابو وأنقذت الكل - شغل محقق حقيقي';
   } else {
     resultIcon.className = 'game-result-icon result-lose';
     resultIcon.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
-    resultTitle.textContent = 'ضـــاع حقي 😭';
+    resultTitle.textContent = 'ضـــاع حقي';
     resultTitle.style.color = 'var(--accent-red-bright)';
     resultTitle.classList.add('lose-shake');
     resultSub.textContent = capoWon ? 'كابو ختلكم كلكم لحد النهاية' : 'اتكشفت... المرة الجاية بقى شاطر';
