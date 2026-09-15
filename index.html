@@ -135,7 +135,45 @@
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         الدخول بجوجل
       </button>
-      <div class="auth-footer">جميع الحقوق محفوظة لدى Khaled Ahmed</div>
+      <div class="auth-footer">جميع الحقوق محفوظة لدينا © Capo</div>
+    </div>
+  </div>
+
+  <!-- COMPLETE PROFILE (اول دخول بجوجل - ممنوع نكمل من غير ما المستخدم يستكمل بياناته زي التسجيل العادي بالظبط) -->
+  <div class="screen" id="screen-complete-profile">
+    <div class="auth-header">
+      <img class="auth-logo" src="https://i.ibb.co/NdHgx21b/logo.png" alt="Capo" draggable="false" oncontextmenu="return false">
+      <div class="auth-title-main">استكمال الحساب</div>
+      <div class="auth-title-sub">خطوة اخيرة قبل ما تدخل - لازم تختار لقبك واسم المستخدم</div>
+    </div>
+    <div class="auth-form active">
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">الاسم الاول</div>
+          <input class="field-input" id="cp-fname" type="text" placeholder="أحمد">
+        </div>
+        <div class="field-group">
+          <div class="field-label">الاسم الثاني</div>
+          <input class="field-input" id="cp-lname" type="text" placeholder="علي">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">لقبك في اللعبة</div>
+        <input class="field-input" id="cp-alias" type="text" placeholder="مثال: GHOST او الشبح">
+        <div class="field-hint">لن يظهر كلمة كابو او Capo كاسم للاعب</div>
+        <div class="field-error" id="cp-err-alias">هذا الاسم غير مسموح به</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">رقم الهاتف</div>
+        <input class="field-input" id="cp-phone" type="tel" placeholder="+966xxxxxxxxx">
+      </div>
+      <div class="field-group">
+        <div class="field-label">اسم المستخدم</div>
+        <input class="field-input" id="cp-username" type="text" placeholder="ahmed123" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
+        <div class="field-hint">حروف انجليزية صغيرة وارقام فقط بدون مسافات</div>
+      </div>
+      <button class="btn-primary" onclick="completeGoogleProfile()">إتمام انشاء الحساب</button>
+      <button class="btn-google" style="margin-top:10px;" onclick="cancelGoogleSignup()">إلغاء والخروج</button>
     </div>
   </div>
 
@@ -177,6 +215,8 @@
 
     <div class="section-title">احدث الاشعارات</div>
     <div style="padding:0 16px;" id="home-notifs-preview"></div>
+
+    <div class="app-copyright">جميع الحقوق محفوظة لدينا © Capo <span id="copyright-year-home"></span></div>
   </div>
 
   <!-- GAME DETAIL -->
@@ -190,6 +230,7 @@
     </div>
     <div class="game-detail-body">
       <div class="game-detail-name" id="detail-name"></div>
+      <div class="detail-rating-summary" id="detail-rating-summary"></div>
       <div class="game-detail-desc" id="detail-desc"></div>
       <div class="game-detail-info">
         <div class="info-chip">
@@ -203,6 +244,10 @@
         <div class="info-chip">
           <div class="info-chip-label">النوع</div>
           <div class="info-chip-val" id="detail-type"></div>
+        </div>
+        <div class="info-chip">
+          <div class="info-chip-label">الصعوبة</div>
+          <div class="info-chip-val" id="detail-difficulty"></div>
         </div>
         <div class="info-chip">
           <div class="info-chip-label">السعر</div>
@@ -219,6 +264,23 @@
 
       <button class="btn-buy" id="detail-action-btn" onclick="handleGameAction()">العب الان</button>
       <div id="paypal-button-container"></div>
+      <button class="share-room-btn" style="margin-top:12px;width:100%;justify-content:center;" onclick="shareGameLink()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+        مشاركة رابط اللعبة
+      </button>
+
+      <div class="rating-card" style="margin-top:18px;">
+        <div class="rating-title">قيّم هذه اللعبة</div>
+        <div class="stars-row" id="detail-stars-row">
+          <button class="star-btn" onclick="selectDetailStar(1)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+          <button class="star-btn" onclick="selectDetailStar(2)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+          <button class="star-btn" onclick="selectDetailStar(3)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+          <button class="star-btn" onclick="selectDetailStar(4)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+          <button class="star-btn" onclick="selectDetailStar(5)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+        </div>
+        <textarea class="rating-comment" id="detail-rating-comment" placeholder="اكتب تعليقك هنا (اختياري)"></textarea>
+        <button class="btn-rate" onclick="submitGameRating()">ارسل التقييم</button>
+      </div>
     </div>
   </div>
 
@@ -256,6 +318,10 @@
         اختار لي
       </button>
       <div id="create-room-games-list" style="text-align:right;"><div class="spinner"></div></div>
+      <div id="create-room-maxplayers-wrap" style="display:none;margin-top:4px;margin-bottom:14px;">
+        <div class="f-label" style="text-align:right;color:var(--text-muted);font-size:0.78rem;margin-bottom:6px;">عدد اللاعبين المحدد للغرفة (لازم يكتمل بالظبط عشان تبدأ)</div>
+        <select class="field-input" id="create-room-maxplayers"></select>
+      </div>
       <button class="btn-join" style="margin-top:14px;" onclick="createRoomByPlayer()">انشئ الغرفة</button>
     </div>
   </div>
@@ -289,6 +355,41 @@
       انت في وضع المشاهدة - يمكنك متابعة اللعبة فقط
     </div>
 
+    <!-- CASE STORY (shown to everyone for 60s when the game starts, before clues) -->
+    <div class="case-story-screen" id="case-story-screen">
+      <div class="case-story-stamp">سرّي - ملف القضية</div>
+      <div class="case-story-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" stroke-width="1.5"><path d="M9 12h6M9 16h6M9 8h1"/><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+      </div>
+      <div class="case-story-title">قصة القضية</div>
+      <div class="case-story-text-wrap">
+        <div class="case-story-text" id="case-story-text"></div>
+      </div>
+      <div class="case-story-timer-wrap">
+        <svg viewBox="0 0 88 88">
+          <circle class="case-story-ring-bg" cx="44" cy="44" r="38"></circle>
+          <circle class="case-story-ring" id="case-story-ring" cx="44" cy="44" r="38"></circle>
+        </svg>
+        <div class="case-story-seconds" id="case-story-seconds">60</div>
+      </div>
+      <div class="case-story-hint">الأدلة هتفتح بعد ما القصة تخلص</div>
+    </div>
+
+    <!-- ROUND CLUE SPOTLIGHT (each round's clue appears once on screen for 60s) -->
+    <div class="clue-spotlight-screen" id="clue-spotlight-screen">
+      <div class="spotlight-badge" id="spotlight-round-label">دليل الجولة</div>
+      <div class="spotlight-title">دليل جديد ظهر الآن!</div>
+      <div class="spotlight-clues-wrap" id="spotlight-clues-wrap"></div>
+      <div class="spotlight-timer-wrap">
+        <svg viewBox="0 0 72 72">
+          <circle class="spotlight-ring-bg" cx="36" cy="36" r="30"></circle>
+          <circle class="spotlight-ring" id="spotlight-ring" cx="36" cy="36" r="30"></circle>
+        </svg>
+        <div class="spotlight-seconds" id="spotlight-seconds">60</div>
+      </div>
+      <div class="spotlight-hint">ركّز - الدليل ده هيتقفل بعد الوقت ده، ويفضل محفوظ في تبويب الادلة</div>
+    </div>
+
     <!-- waiting -->
     <div class="waiting-screen" id="waiting-screen">
       <div class="waiting-pulse">
@@ -296,6 +397,17 @@
       </div>
       <div class="waiting-title">في انتظار الادمن</div>
       <div class="waiting-sub" id="waiting-players-count">لا يوجد لاعبون بعد</div>
+
+      <div class="waiting-players-list" id="waiting-players-list"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <button class="btn-ready-toggle" id="btn-ready-toggle" onclick="toggleReady()">لست جاهزاً - اضغط للتجهيز</button>
+        <div class="room-lock-toggle" id="room-lock-toggle" style="display:none;" onclick="toggleRoomLock()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <span id="room-lock-label">الغرفة مفتوحة</span>
+        </div>
+      </div>
+
       <button class="share-room-btn" onclick="shareRoomLink()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
         شارك رابط الغرفة مع اصدقائك
@@ -399,6 +511,12 @@
         </div>
       </div>
 
+      <div class="profile-section-title">المجتمع</div>
+      <button class="share-room-btn" style="width:100%;justify-content:center;margin-bottom:18px;" onclick="navigateTo('top-players'); loadTopPlayers();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"/><path d="M17 5h3a2 2 0 01-2 4M7 5H4a2 2 0 002 4"/></svg>
+        أبرز اللاعبين
+      </button>
+
       <div class="profile-section-title">تقييم التطبيق</div>
       <div class="rating-card">
         <div class="rating-title">ما رايك في Capo؟</div>
@@ -414,7 +532,19 @@
       </div>
 
       <button class="btn-primary" style="background:linear-gradient(135deg,var(--accent-red),#c0392b);color:var(--text-primary);" onclick="doSignOut()">تسجيل الخروج</button>
+
+      <div class="app-copyright">جميع الحقوق محفوظة لدينا © Capo <span id="copyright-year"></span></div>
     </div>
+  </div>
+
+  <!-- TOP PLAYERS / HALL OF FAME -->
+  <div class="screen" id="screen-top-players">
+    <div class="back-btn" style="position:relative;top:auto;right:auto;margin-bottom:14px;align-self:flex-end;" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="notif-header-title" style="padding:0 16px 12px;">أبرز اللاعبين 🏆</div>
+    <div style="padding:0 16px 8px;color:var(--text-muted);font-size:0.78rem;">اللاعبين اللي فازوا في أكتر من 3 العاب</div>
+    <div id="top-players-list" style="padding:12px 16px 30px;"></div>
   </div>
 
   <!-- NOTIFICATIONS -->
