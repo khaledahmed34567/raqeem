@@ -17,6 +17,7 @@ try { analytics = firebase.analytics(); } catch (e) { /* analytics may fail offl
 const auth = firebase.auth();
 const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
+const DEFAULT_MASCOT_URL = 'https://i.ibb.co/dJszqfYR/1000311864.png';
 
 document.addEventListener('DOMContentLoaded', function() {
   const y = new Date().getFullYear();
@@ -498,9 +499,7 @@ function buildGameCard(g) {
   const diff = DIFFICULTY_MAP[g.difficulty] || DIFFICULTY_MAP.medium;
   const ratingCount = g.ratingCount || 0;
   const avg = ratingCount ? (g.ratingSum || 0) / ratingCount : 0;
-  const mascotHtml = g.mascotUrl
-    ? '<img class="game-card-mascot" src="' + g.mascotUrl + '" alt="" draggable="false" oncontextmenu="return false">'
-    : '<div class="game-card-mascot-placeholder">🎭</div>';
+  const mascotHtml = '<img class="game-card-mascot" src="' + (g.mascotUrl || DEFAULT_MASCOT_URL) + '" alt="" draggable="false" oncontextmenu="return false">';
   const gJson = JSON.stringify(g).replace(/'/g, "&#39;");
   return '<div class="game-card" onclick="flipGameCard(this)">'
     + '<div class="game-card-inner">'
@@ -520,12 +519,49 @@ function buildGameCard(g) {
     + '<div class="game-card-face game-card-back">'
     + mascotHtml
     + '<div class="game-card-back-name">' + escapeHtml(g.name || 'لعبة') + '</div>'
-    + '<div class="game-card-back-stars">' + buildStaticStars(avg) + '<span>(' + ratingCount + ')</span></div>'
+    + '<div class="game-card-back-stars" data-gid="' + g.id + '">' + buildQuickRateStars(g.id, avg) + '<span class="gcb-count">(' + ratingCount + ')</span></div>'
     + '<div class="game-card-back-plays">اتلعبت ' + (g.playsCount || 0) + ' مرة</div>'
     + '<button class="game-card-back-btn" onclick="event.stopPropagation(); showGameDetail(' + gJson + ')">عرض التفاصيل</button>'
     + '</div>'
     + '</div></div>';
 }
+
+// نجوم تفاعلية على ضهر الكارت مباشرة - عشان التقييم يبقى واضح من غير ما تدخل تفاصيل اللعبة
+function buildQuickRateStars(gameId, avg) {
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    const filled = avg >= i - 0.5;
+    html += '<svg class="qr-star" viewBox="0 0 24 24" fill="' + (filled ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.5" onclick="event.stopPropagation(); quickRateGame(\'' + gameId + '\', ' + i + ', this)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+  }
+  return html;
+}
+
+async function quickRateGame(gameId, stars, starEl) {
+  if (!currentUser) return;
+  try {
+    await db.collection('ratings').add({
+      uid: currentUser.uid,
+      alias: currentUserData ? currentUserData.alias : '',
+      gameId: gameId,
+      rating: stars,
+      comment: '',
+      time: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('games').doc(gameId).update({
+      ratingSum: firebase.firestore.FieldValue.increment(stars),
+      ratingCount: firebase.firestore.FieldValue.increment(1)
+    });
+    showToast('شكراً على تقييمك (' + stars + ' نجوم)');
+    // نلوّن النجوم فوراً محلياً من غير استنى قراءة جديدة
+    const row = starEl.closest('.game-card-back-stars');
+    if (row) {
+      row.querySelectorAll('.qr-star').forEach(function(s, idx) {
+        s.setAttribute('fill', idx < stars ? 'currentColor' : 'none');
+      });
+    }
+  } catch (e) { showToast('فشل ارسال التقييم'); }
+}
+window.quickRateGame = quickRateGame;
 
 window.flipGameCard = function(el) {
   el.classList.toggle('flipped');
@@ -552,6 +588,21 @@ function showGameDetail(g) {
   const avg = ratingCount ? (g.ratingSum || 0) / ratingCount : 0;
   document.getElementById('detail-rating-summary').innerHTML = buildStaticStars(avg)
     + '<span class="drs-count">' + (ratingCount ? (avg.toFixed(1) + ' (' + ratingCount + ' تقييم) - اتلعبت ' + (g.playsCount || 0) + ' مرة') : 'لسه معملهاش حد تقييم') + '</span>';
+
+  const charsSection = document.getElementById('detail-characters-section');
+  const characters = g.characters || [];
+  if (characters.length) {
+    document.getElementById('detail-characters-list').innerHTML = characters.map(function(c) {
+      return '<div class="char-preview-card">'
+        + '<div class="char-preview-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg></div>'
+        + '<div><div class="char-preview-name">' + escapeHtml(c.name || 'شخصية') + '</div>'
+        + (c.bio ? '<div class="char-preview-bio">' + escapeHtml(c.bio) + '</div>' : '')
+        + '</div></div>';
+    }).join('');
+    charsSection.style.display = 'block';
+  } else {
+    charsSection.style.display = 'none';
+  }
 
   currentDetailRating = 0;
   document.querySelectorAll('#detail-stars-row .star-btn').forEach(b => b.classList.remove('active'));
@@ -1063,7 +1114,18 @@ function showCharacterReveal(p) {
   if (!overlay) return;
   document.getElementById('char-reveal-name').textContent = p.characterName || '';
   document.getElementById('char-reveal-bio').textContent = p.characterBio || '';
-  document.getElementById('char-reveal-capo-tag').style.display = p.isCapo ? 'block' : 'none';
+  const capoTag = document.getElementById('char-reveal-capo-tag');
+  capoTag.style.display = p.isCapo ? 'block' : 'none';
+  capoTag.classList.toggle('show-tag', !!p.isCapo);
+  document.getElementById('char-reveal-game-name').textContent = (currentRoom && currentRoom.gameName) ? currentRoom.gameName : 'CAPO';
+  ensureRoomGameLoaded().then(function(game) {
+    document.getElementById('char-reveal-mascot').src = (game && game.mascotUrl) ? game.mascotUrl : DEFAULT_MASCOT_URL;
+  });
+  // نعيد تشغيل الأنيميشن من الاول في كل مرة يتكشف فيها كارت جديد
+  const card = document.getElementById('char-reveal-card');
+  card.style.animation = 'none';
+  void card.offsetWidth;
+  card.style.animation = '';
   overlay.classList.add('show');
 }
 window.closeCharacterReveal = function() {

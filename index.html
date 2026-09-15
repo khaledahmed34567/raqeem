@@ -255,6 +255,11 @@
         </div>
       </div>
 
+      <div id="detail-characters-section" style="display:none;margin:4px 0 16px;">
+        <div class="section-title" style="padding:0 0 10px;">🎭 شخصيات القضية</div>
+        <div class="detail-characters-list" id="detail-characters-list"></div>
+      </div>
+
       <div id="coupon-section">
         <div class="coupon-row">
           <input class="coupon-input" id="coupon-input" placeholder="كود الخصم">
@@ -605,13 +610,18 @@
 
 <!-- Character Reveal Overlay (private role card, shown only to the player it belongs to) -->
 <div class="eliminated-overlay" id="char-reveal-overlay">
-  <div class="eliminated-icon" style="animation:none;">
-    <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>
+  <div class="char-reveal-card" id="char-reveal-card">
+    <div class="char-reveal-shine"></div>
+    <div class="char-reveal-game-tag" id="char-reveal-game-name">CAPO</div>
+    <div class="char-reveal-mascot-wrap">
+      <img class="char-reveal-mascot" id="char-reveal-mascot" src="" alt="" draggable="false" oncontextmenu="return false">
+    </div>
+    <div class="char-reveal-label">دورك في هذه القضية</div>
+    <div class="eliminated-title" style="color:var(--accent-gold);" id="char-reveal-name"></div>
+    <div id="char-reveal-capo-tag" style="display:none;color:var(--accent-red-bright);font-size:0.85rem;letter-spacing:2px;margin-bottom:10px;">انت الكابو - حافظ على سرك</div>
+    <div class="eliminated-sub" id="char-reveal-bio"></div>
+    <button class="btn-spectate" onclick="closeCharacterReveal()">فهمت</button>
   </div>
-  <div class="eliminated-title" style="color:var(--accent-gold);" id="char-reveal-name"></div>
-  <div class="eliminated-sub" id="char-reveal-bio"></div>
-  <div id="char-reveal-capo-tag" style="display:none;color:var(--accent-red-bright);font-size:0.85rem;letter-spacing:2px;margin-bottom:16px;">انت الكابو - حافظ على سرك</div>
-  <button class="btn-spectate" onclick="closeCharacterReveal()">فهمت</button>
 </div>
 
 
