@@ -538,7 +538,6 @@ img { pointer-events: none; -webkit-user-drag: none; }
   opacity: 0;
   transform: translateY(16px);
   animation: gameCardIn 0.55s cubic-bezier(0.16,1,0.3,1) forwards;
-  perspective: 1300px;
 }
 .games-scroll .game-card:nth-child(1) { animation-delay: 0.02s; }
 .games-scroll .game-card:nth-child(2) { animation-delay: 0.08s; }
@@ -549,28 +548,29 @@ img { pointer-events: none; -webkit-user-drag: none; }
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.game-card:active .game-card-inner { transform: scale(0.99); }
-.game-card.flipped .game-card-inner { transform: rotateY(180deg); }
-.game-card.flipped:active .game-card-inner { transform: rotateY(180deg) scale(0.99); }
 
+/* قلب الكارت: بدّلنا الـ 3D transform (rotateY) بتلاشي/تكبير عادي
+   لأن الـ 3D transform كان بيسبب مشاكل حقيقية على شاشات موبايل كتير:
+   الوش المخفي كان أحياناً بيستقبل ضغطات (زرار التفاصيل مش بيشتغل) وأحياناً بيترندر فاضي (الاسم مش ظاهر).
+   الطريقة دي آمنة 100% على كل المتصفحات وبتدي نفس احساس "القلب" */
 .game-card-inner {
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 0.65s cubic-bezier(0.4,0.2,0.2,1);
-  transform-style: preserve-3d;
 }
 .game-card-face {
   position: absolute;
   inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  transition: var(--transition);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.4,0.2,0.2,1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
+.game-card-front { opacity: 1; transform: scale(1) scaleX(1); z-index: 2; pointer-events: auto; }
+.game-card-back  { opacity: 0; transform: scale(0.94) scaleX(0.85); z-index: 1; pointer-events: none; }
+.game-card.flipped .game-card-front { opacity: 0; transform: scale(0.94) scaleX(0.85); z-index: 1; pointer-events: none; }
+.game-card.flipped .game-card-back  { opacity: 1; transform: scale(1) scaleX(1); z-index: 2; pointer-events: auto; }
 .game-card:hover .game-card-face {
   border-color: var(--accent-gold-dim);
   box-shadow: var(--shadow-glow);
@@ -1829,6 +1829,14 @@ img { pointer-events: none; -webkit-user-drag: none; }
   margin-bottom: 8px;
 }
 .result-sub { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 24px; }
+.result-title.lose-shake { animation: resultShake 0.5s ease-in-out 1; }
+@keyframes resultShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px) rotate(-1deg); }
+  40% { transform: translateX(5px) rotate(1deg); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
 
 /* ===== NOTIFICATIONS SCREEN ===== */
 #screen-notifications { padding-bottom: 80px; padding-top: 50px; }
@@ -2258,6 +2266,15 @@ img { pointer-events: none; -webkit-user-drag: none; }
 .char-preview-avatar svg { width: 17px; height: 17px; }
 .char-preview-name { font-size: 0.86rem; font-weight: 700; color: var(--text-primary); }
 .char-preview-bio { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
+
+.wallet-card { padding: 16px; }
+.wallet-balance-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wallet-balance-amount { font-size: 1.4rem; font-weight: 700; color: var(--accent-gold); margin-top: 4px; }
+.wallet-locked-note {
+  font-size: 0.68rem;
+  color: var(--accent-red-bright);
+  margin-top: 4px;
+}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 360px) {

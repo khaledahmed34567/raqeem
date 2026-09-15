@@ -37,6 +37,7 @@ let currentDetailRating = 0;
 let isEliminated = false;
 let isSpectator = false;
 let ownCharacterRevealed = null;
+let ownIsCapo = false;
 let loginMethod = 'email';
 let roomListeners = [];
 let ownReady = false;
@@ -230,6 +231,8 @@ function updateProfileUI() {
   document.getElementById('pf-username').textContent = '@' + (currentUserData.username || '');
   document.getElementById('pf-email').textContent = currentUserData.email || (currentUser ? currentUser.email : '');
   document.getElementById('pf-phone').textContent = currentUserData.phone || '-';
+  const walletEl = document.getElementById('wallet-balance-amount');
+  if (walletEl) walletEl.textContent = (currentUserData.walletBalance || 0) + ' جنيه';
 }
 
 // ===== AUTH =====
@@ -433,6 +436,17 @@ function handleAuthError(e) {
 // ===== NAVIGATION =====
 let screenHistory = [];
 
+// زرار الرجوع الفعلي في الموبايل (أو زرار رجوع المتصفح) كان بيقفل الموقع كله بدل ما يرجع لشاشة سابقة جوه التطبيق.
+// بنحقن history entry إضافي دايمًا عشان أول ضغطة رجوع توديك لشاشة سابقة جوه الموقع، ولما توصل لأول شاشة (مفيش تاريخ متبقي)
+// بنسيب زرار الرجوع يشتغل بشكل طبيعي (يقفل الموقع) عشان المستخدم يقدر يخرج فعليًا لو حابب.
+try { history.pushState({ screen: 'boot' }, '', location.href); } catch (e) {}
+window.addEventListener('popstate', function() {
+  if (screenHistory.length > 0) {
+    goBack();
+    try { history.pushState({ screen: 'sync' }, '', location.href); } catch (e) {}
+  }
+});
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const s = document.getElementById('screen-' + id);
@@ -491,7 +505,7 @@ const DIFFICULTY_MAP = { easy: ['سهل', 'diff-easy'], medium: ['متوسط', '
 function buildGameCard(g) {
   const isPaid = g.price && parseFloat(g.price) > 0;
   const badge = isPaid
-    ? '<div class="game-badge badge-paid">' + (g.price || '') + ' ريال</div>'
+    ? '<div class="game-badge badge-paid">' + (g.price || '') + ' جنيه</div>'
     : '<div class="game-badge badge-free">مجاني</div>';
   const imgContent = g.coverUrl
     ? '<img class="game-card-img" src="' + g.coverUrl + '" alt="" draggable="false" oncontextmenu="return false">'
@@ -500,8 +514,10 @@ function buildGameCard(g) {
   const ratingCount = g.ratingCount || 0;
   const avg = ratingCount ? (g.ratingSum || 0) / ratingCount : 0;
   const mascotHtml = '<img class="game-card-mascot" src="' + (g.mascotUrl || DEFAULT_MASCOT_URL) + '" alt="" draggable="false" oncontextmenu="return false">';
-  const gJson = JSON.stringify(g).replace(/'/g, "&#39;");
-  return '<div class="game-card" onclick="flipGameCard(this)">'
+  // بيانات اللعبة بتتخزن في data-game بشكل آمن (attributeEscape بيحول أي " أو ' أو & لكود HTML)
+  // بدل ما نحقنها كـ JSON خام جوه onclick="" اللي كان بيكسر أي وقت اسم اللعبة أو أي حقل فيه علامة تنصيص
+  const gameDataAttr = attributeEscape(JSON.stringify(g));
+  return '<div class="game-card" data-game="' + gameDataAttr + '" onclick="flipGameCard(this)">'
     + '<div class="game-card-inner">'
     + '<div class="game-card-face game-card-front">'
     + imgContent + badge
@@ -521,10 +537,34 @@ function buildGameCard(g) {
     + '<div class="game-card-back-name">' + escapeHtml(g.name || 'لعبة') + '</div>'
     + '<div class="game-card-back-stars" data-gid="' + g.id + '">' + buildQuickRateStars(g.id, avg) + '<span class="gcb-count">(' + ratingCount + ')</span></div>'
     + '<div class="game-card-back-plays">اتلعبت ' + (g.playsCount || 0) + ' مرة</div>'
-    + '<button class="game-card-back-btn" onclick="event.stopPropagation(); showGameDetail(' + gJson + ')">عرض التفاصيل</button>'
+    + '<button class="game-card-back-btn" onclick="event.stopPropagation(); showGameDetailFromCard(this)">عرض التفاصيل</button>'
     + '</div>'
     + '</div></div>';
 }
+
+// تهريب آمن للنص عشان يتحط جوه HTML attribute من غير ما يكسره (مختلف عن escapeHtml العادي لأنه بيغطي علامات التنصيص الاتنين)
+function attributeEscape(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// بيقرأ بيانات اللعبة من data-game على الكارت (مش من onclick مباشرة) عشان يفضل شغال مهما كان اسم/وصف اللعبة فيه علامات تنصيص
+function showGameDetailFromCard(btnEl) {
+  const card = btnEl.closest('.game-card');
+  if (!card || !card.dataset.game) return;
+  try {
+    const g = JSON.parse(card.dataset.game);
+    showGameDetail(g);
+  } catch (e) {
+    console.error('تعذر قراءة بيانات اللعبة', e);
+    showToast('حصل خطأ - جرب تاني');
+  }
+}
+window.showGameDetailFromCard = showGameDetailFromCard;
 
 // نجوم تفاعلية على ضهر الكارت مباشرة - عشان التقييم يبقى واضح من غير ما تدخل تفاصيل اللعبة
 function buildQuickRateStars(gameId, avg) {
@@ -580,7 +620,7 @@ function showGameDetail(g) {
   const diff = DIFFICULTY_MAP[g.difficulty] || DIFFICULTY_MAP.medium;
   document.getElementById('detail-difficulty').textContent = diff[0];
   const isPaid = g.price && parseFloat(g.price) > 0;
-  document.getElementById('detail-price').textContent = isPaid ? g.price + ' ريال' : 'مجاني';
+  document.getElementById('detail-price').textContent = isPaid ? g.price + ' جنيه' : 'مجاني';
   document.getElementById('coupon-section').style.display = isPaid ? 'block' : 'none';
   document.getElementById('paypal-button-container').innerHTML = '';
 
@@ -614,15 +654,76 @@ function showGameDetail(g) {
     actionBtn.textContent = 'انضم لغرفة';
     actionBtn.onclick = function() { navigateTo('join'); };
   } else {
-    actionBtn.textContent = 'اشتر الان - ' + g.price + ' ريال';
+    actionBtn.textContent = 'اشتر الان - ' + g.price + ' جنيه';
     actionBtn.onclick = function() { initPayPal(g); };
   }
   navigateTo('game-detail');
 }
 
+function handlePlayNowClick() {
+  if (!currentGameData) return;
+  const g = currentGameData;
+  const isPaid = g.price && parseFloat(g.price) > 0;
+  const purchased = currentUserData && (currentUserData.purchasedGames || []).includes(g.id);
+  if (isPaid && !purchased) {
+    showToast('لازم تشتري اللعبة الأول');
+    document.getElementById('detail-action-btn').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  playThisGameNow(g);
+}
+window.handlePlayNowClick = handlePlayNowClick;
+
 function handleGameAction() {
   navigateTo('join');
 }
+
+// إنشاء غرفة فورية للعبة دي بالذات (من غير ما تعدي على شاشة اختيار العاب متعددة)
+// وبعدين تقدر تبعت رابط/كود الغرفة لأصحابك مباشرة من شاشة الانتظار
+async function playThisGameNow(g) {
+  if (!currentUser || !currentUserData) { showToast('لازم تسجل دخول الأول'); return; }
+  try {
+    const roomRef = db.collection('rooms').doc();
+    await roomRef.set({
+      name: (currentUserData.alias || 'PLAYER') + ' - ' + (g.name || ''),
+      code: generatePlayerRoomCode(),
+      ownerUid: currentUser.uid,
+      gameIds: [g.id],
+      currentGameIndex: 0,
+      currentGameId: g.id,
+      gameName: g.name || '',
+      status: 'waiting',
+      currentRound: 0,
+      totalRounds: g.rounds || 5,
+      roundDone: false,
+      votingOpen: false,
+      eliminatedPlayers: [],
+      capoEliminated: false,
+      capoWon: false,
+      isPublic: true,
+      locked: false,
+      maxPlayers: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentRoomId = roomRef.id;
+    const roomSnap = await roomRef.get();
+    currentRoom = roomSnap.data();
+    const playerData = {
+      uid: currentUser.uid,
+      name: ((currentUserData.firstName || '') + ' ' + (currentUserData.lastName || '')).trim(),
+      alias: currentUserData.alias || 'PLAYER',
+      status: 'active',
+      ready: false,
+      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('rooms').doc(currentRoomId).collection('players').doc(currentUser.uid).set(playerData);
+    enterRoom();
+  } catch (e) {
+    console.error(e);
+    showToast('تعذر إنشاء الغرفة - حاول تاني');
+  }
+}
+window.playThisGameNow = playThisGameNow;
 
 function shareGameLink() {
   if (!selectedGameId) return;
@@ -662,6 +763,48 @@ function renderPayPal(g) {
   }).render('#paypal-button-container');
 }
 
+// ===== WALLET =====
+function toggleWalletTopup() {
+  const section = document.getElementById('wallet-topup-section');
+  section.style.display = section.style.display === 'none' ? 'block' : 'none';
+}
+window.toggleWalletTopup = toggleWalletTopup;
+
+function initWalletTopup() {
+  const amount = parseFloat(document.getElementById('wallet-topup-amount').value);
+  if (!amount || amount <= 0) { showToast('اكتب مبلغ صحيح'); return; }
+  if (window.paypal) { renderWalletPayPal(amount); return; }
+  const script = document.createElement('script');
+  script.src = 'https://www.paypal.com/sdk/js?client-id=AW_M1acPABnrPp2AJklYALUDZ1OUA2NS6CPGp3D3ZB9fVIfmfD87le9WZmHF3fOCqINDO3RAtQGWLteZ&currency=USD';
+  script.onload = function() { renderWalletPayPal(amount); };
+  document.head.appendChild(script);
+}
+window.initWalletTopup = initWalletTopup;
+
+function renderWalletPayPal(amount) {
+  const container = document.getElementById('wallet-paypal-container');
+  container.innerHTML = '';
+  window.paypal.Buttons({
+    createOrder: function(data, actions) {
+      return actions.order.create({ purchase_units: [{ amount: { value: String(amount) } }] });
+    },
+    onApprove: async function(data, actions) {
+      await actions.order.capture();
+      try {
+        await db.collection('users').doc(currentUser.uid).update({
+          walletBalance: firebase.firestore.FieldValue.increment(amount)
+        });
+        currentUserData.walletBalance = (currentUserData.walletBalance || 0) + amount;
+        document.getElementById('wallet-balance-amount').textContent = currentUserData.walletBalance + ' جنيه';
+        showToast('تم شحن ' + amount + ' جنيه في محفظتك');
+        document.getElementById('wallet-topup-section').style.display = 'none';
+        document.getElementById('wallet-topup-amount').value = '';
+      } catch (e) { showToast('حصل خطأ في تحديث الرصيد - كلم الدعم'); }
+    },
+    onError: function() { showToast('فشل الدفع - حاول مرة اخرى'); }
+  }).render('#wallet-paypal-container');
+}
+
 async function applyCoupon() {
   const code = document.getElementById('coupon-input').value.trim().toUpperCase();
   if (!code) return;
@@ -678,7 +821,7 @@ async function applyCoupon() {
       document.getElementById('detail-action-btn').textContent = 'انضم لغرفة';
     } else {
       const newPrice = (parseFloat(currentGameData.price || 0) * (1 - discount/100)).toFixed(2);
-      document.getElementById('detail-price').textContent = newPrice + ' ريال (بعد الخصم)';
+      document.getElementById('detail-price').textContent = newPrice + ' جنيه (بعد الخصم)';
       showToast('تم تطبيق خصم ' + discount + '%');
     }
   } catch (e) { showToast('خطأ في تطبيق الكود'); }
@@ -768,6 +911,7 @@ function resetRoomFeatureState() {
   caseStoryEndsAtCache = null;
   clueSpotlightKeyShown = null;
   ownReady = false;
+  ownIsCapo = false;
   lastPlayersArr = [];
   votedRound = null;
   clearInterval(caseStoryTimerId); caseStoryTimerId = null;
@@ -799,16 +943,58 @@ window.openCreateRoomScreen = openCreateRoomScreen;
 function renderCreateRoomGamesList() {
   const list = document.getElementById('create-room-games-list');
   const played = (currentUserData && currentUserData.playedGameIds) || [];
-  list.innerHTML = createRoomGamesCache.map(g =>
-    '<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border-subtle,#222230);border-radius:10px;margin-bottom:8px;">' +
-      '<input type="checkbox" class="create-room-game-cb" value="' + g.id + '" onchange="updateMaxPlayersOptions()">' +
+  const purchased = (currentUserData && currentUserData.purchasedGames) || [];
+  const balance = (currentUserData && currentUserData.walletBalance) || 0;
+  list.innerHTML = createRoomGamesCache.map(g => {
+    const isPaid = g.price && parseFloat(g.price) > 0;
+    const owned = !isPaid || purchased.indexOf(g.id) !== -1;
+    const canAfford = owned || balance >= parseFloat(g.price);
+    const lockNote = (!owned && !canAfford)
+      ? '<div class="wallet-locked-note">لعبة مدفوعة (' + g.price + ' جنيه) - رصيدك في المحفظة مش كافي، اشحن الأول من صفحة حسابي</div>'
+      : (!owned && canAfford ? '<div class="wallet-locked-note" style="color:var(--accent-gold);">مدفوعة (' + g.price + ' جنيه) - هيتخصم من محفظتك أول ما تختارها</div>' : '');
+    return '<label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--border-subtle,#222230);border-radius:10px;margin-bottom:8px;' + (!owned && !canAfford ? 'opacity:0.5;' : '') + '">' +
+      '<input type="checkbox" class="create-room-game-cb" value="' + g.id + '" data-owned="' + owned + '" data-canafford="' + canAfford + '" data-price="' + (g.price || 0) + '" ' + (!owned && !canAfford ? 'disabled' : '') + ' onchange="handleCreateRoomGameCheck(this, \'' + g.id + '\')">' +
       '<span style="flex:1;">' + escapeHtml(g.name || 'لعبة') +
         (played.indexOf(g.id) !== -1 ? '<span style="margin-right:8px;font-size:0.7rem;color:var(--text-muted);">لعبتها قبل كده</span>' : '') +
+        lockNote +
       '</span>' +
-    '</label>'
-  ).join('') || '<div style="color:var(--text-muted);font-size:0.8rem;">لا توجد العاب متاحة</div>';
+    '</label>';
+  }).join('') || '<div style="color:var(--text-muted);font-size:0.8rem;">لا توجد العاب متاحة</div>';
   updateMaxPlayersOptions();
 }
+
+// لما تحاول تختار لعبة مدفوعة لسه مشتريتهاش، بنخصم قيمتها من المحفظة فورًا ونضيفها لألعابك المشتراة (شراء مرة واحدة، تلعب بيها على طول بعد كده)
+async function handleCreateRoomGameCheck(checkbox, gameId) {
+  if (!checkbox.checked) { updateMaxPlayersOptions(); return; }
+  const owned = checkbox.dataset.owned === 'true';
+  if (owned) { updateMaxPlayersOptions(); return; }
+  const price = parseFloat(checkbox.dataset.price) || 0;
+  const balance = (currentUserData && currentUserData.walletBalance) || 0;
+  if (balance < price) {
+    checkbox.checked = false;
+    showToast('رصيدك في المحفظة مش كافي - اشحن المحفظة الأول من صفحة حسابي');
+    return;
+  }
+  checkbox.disabled = true;
+  try {
+    await db.collection('users').doc(currentUser.uid).update({
+      walletBalance: firebase.firestore.FieldValue.increment(-price),
+      purchasedGames: firebase.firestore.FieldValue.arrayUnion(gameId)
+    });
+    currentUserData.walletBalance = balance - price;
+    currentUserData.purchasedGames = (currentUserData.purchasedGames || []).concat([gameId]);
+    const walletEl = document.getElementById('wallet-balance-amount');
+    if (walletEl) walletEl.textContent = currentUserData.walletBalance + ' جنيه';
+    showToast('تم خصم ' + price + ' جنيه من محفظتك - اللعبة بقت ملكك دايمًا');
+    checkbox.dataset.owned = 'true';
+  } catch (e) {
+    checkbox.checked = false;
+    showToast('تعذر إتمام الشراء من المحفظة');
+  }
+  checkbox.disabled = false;
+  updateMaxPlayersOptions();
+}
+window.handleCreateRoomGameCheck = handleCreateRoomGameCheck;
 
 // يبني قائمة "عدد اللاعبين" حسب اول لعبة متختارة (عشان نلزم الغرفة بعدد محدد ومتدخلش اكتر او اقل منه)
 function updateMaxPlayersOptions() {
@@ -1023,15 +1209,21 @@ async function endRoundInRoom() {
     const newEliminated = (currentRoom.eliminatedPlayers || []).slice();
     if (newEliminated.indexOf(eliminatedUid) === -1) newEliminated.push(eliminatedUid);
     const remainingCapos = allPlayers.filter(p => p.isCapo && newEliminated.indexOf(p.uid) === -1);
+    const remainingInnocents = allPlayers.filter(p => !p.isCapo && newEliminated.indexOf(p.uid) === -1);
 
     const batch = db.batch();
     votesSnap.forEach(d => batch.delete(d.ref));
     const roomRef = db.collection('rooms').doc(currentRoomId);
 
     if (remainingCapos.length === 0) {
+      // كل الكابوهات اتصيدوا - الأبرياء كسبوا
       batch.update(roomRef, { eliminatedPlayers: newEliminated, capoEliminated: true, votingOpen: false, roundDone: true });
       const winners = allPlayers.filter(p => !p.isCapo && newEliminated.indexOf(p.uid) === -1);
       recordGameWinners(batch, winners);
+    } else if (remainingInnocents.length === 0) {
+      // كل الأبرياء خرجوا وفضل الكابو/الكابوهات - يكسبوا فوراً من غير ما ننتظر اخر جولة
+      batch.update(roomRef, { eliminatedPlayers: newEliminated, capoWon: true, votingOpen: false, roundDone: true });
+      recordGameWinners(batch, remainingCapos);
     } else if ((currentRoom.currentRound || 1) >= (currentRoom.totalRounds || 5)) {
       batch.update(roomRef, { eliminatedPlayers: newEliminated, capoWon: true, votingOpen: false, roundDone: true });
       recordGameWinners(batch, remainingCapos);
@@ -1190,6 +1382,7 @@ function setupRoomListeners() {
     }
     const p = snap.data();
     ownReady = !!p.ready;
+    ownIsCapo = !!p.isCapo;
     updateReadyButtonUI();
     if (p.characterId && p.characterId !== ownCharacterRevealed) {
       ownCharacterRevealed = p.characterId;
@@ -1699,25 +1892,49 @@ function showGameEnded() {
   const resultIcon = document.getElementById('result-icon');
   const resultTitle = document.getElementById('result-title');
   const resultSub = document.getElementById('result-sub');
+  const resultMascot = document.getElementById('result-mascot');
+  resultTitle.classList.remove('lose-shake');
+  resultMascot.style.display = 'none';
 
-  if (capoWon) {
-    resultIcon.className = 'game-result-icon result-lose';
-    resultIcon.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
-    resultTitle.textContent = 'فاز كابو';
-    resultTitle.style.color = 'var(--accent-red-bright)';
-    resultSub.textContent = 'نجح كابو في الاختباء حتى النهاية';
-  } else {
+  // "فريقك" فاز ولا لأ - بناءً على هل انت كابو ولا لأ (مش بس هل نجيت من الاقصاء)
+  const iAmSpectatorLike = isSpectator;
+  const iWon = capoWon ? ownIsCapo : !ownIsCapo;
+
+  if (iAmSpectatorLike) {
+    resultIcon.className = 'game-result-icon';
+    resultIcon.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>';
+    resultTitle.textContent = 'انتهت اللعبة';
+    resultTitle.style.color = 'var(--accent-gold)';
+    resultSub.textContent = capoWon ? 'نجح كابو في الاختباء حتى النهاية' : 'تم كشف كابو واعتقاله';
+  } else if (iWon) {
     resultIcon.className = 'game-result-icon result-win';
     resultIcon.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-    resultTitle.textContent = 'انتصر المحققون';
+    resultTitle.textContent = 'مبروك! ربحت 🎉';
     resultTitle.style.color = '#7ecba4';
-    resultSub.textContent = 'تم كشف كابو واعتقاله';
+    resultSub.textContent = capoWon ? 'نجحت تختبي من الكل لحد النهاية - انت كابو محترف' : 'كشفت كابو وأنقذت الكل - شغل محقق حقيقي';
+  } else {
+    resultIcon.className = 'game-result-icon result-lose';
+    resultIcon.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    resultTitle.textContent = 'ضـــاع حقي 😭';
+    resultTitle.style.color = 'var(--accent-red-bright)';
+    resultTitle.classList.add('lose-shake');
+    resultSub.textContent = capoWon ? 'كابو ختلكم كلكم لحد النهاية' : 'اتكشفت... المرة الجاية بقى شاطر';
+    resultMascot.src = DEFAULT_MASCOT_URL;
+    resultMascot.style.display = 'block';
   }
 
   document.getElementById('waiting-screen').style.display = 'none';
   document.getElementById('active-game-area').style.display = 'none';
   document.getElementById('game-ended-screen').classList.add('show');
 }
+
+// يطلّع اللاعب برا الغرفة تمامًا عشان يختار لعبة تانية من الاول (مش نفس قائمة العاب الغرفة دي)
+function playDifferentGame() {
+  document.getElementById('game-ended-screen').classList.remove('show');
+  exitRoom();
+  navigateTo('home');
+}
+window.playDifferentGame = playDifferentGame;
 
 function goSpectator() {
   isSpectator = true;
@@ -1726,6 +1943,13 @@ function goSpectator() {
 }
 
 async function exitRoom() {
+  const isOwnerLeaving = currentRoom && currentUser && currentRoom.ownerUid === currentUser.uid && currentRoom.status !== 'deleted';
+  if (isOwnerLeaving) {
+    const closeIt = confirm('انت صاحب الغرفة. تحب تقفل الغرفة للجميع قبل ما تخرج؟\n(اضغط "الغاء" لو عايز تسيب الغرفة مفتوحة للباقيين)');
+    if (closeIt) {
+      try { await db.collection('rooms').doc(currentRoomId).update({ status: 'deleted' }); } catch (e) {}
+    }
+  }
   clearRoomListeners();
   resetRoomFeatureState();
   if (currentRoomId && currentUser) {

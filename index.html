@@ -267,6 +267,7 @@
         </div>
       </div>
 
+      <button class="btn-buy" id="detail-playnow-btn" style="background:linear-gradient(135deg,#2d6a4f,#1b4332);margin-bottom:10px;" onclick="handlePlayNowClick()">🎮 يلا نلعب - أنشئ غرفة لهذه اللعبة</button>
       <button class="btn-buy" id="detail-action-btn" onclick="handleGameAction()">العب الان</button>
       <div id="paypal-button-container"></div>
       <button class="share-room-btn" style="margin-top:12px;width:100%;justify-content:center;" onclick="shareGameLink()">
@@ -483,9 +484,11 @@
       <div class="game-result-icon" id="result-icon">
         <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
       </div>
+      <img id="result-mascot" src="" alt="" style="display:none;width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-red);margin-bottom:14px;box-shadow:0 0 20px rgba(139,28,28,0.4);">
       <div class="result-title" id="result-title"></div>
       <div class="result-sub" id="result-sub"></div>
       <button class="btn-primary" style="width:auto;padding:13px 30px;margin-bottom:10px;" onclick="playAgain()">العب مرة اخرى</button>
+      <button class="btn-google" style="margin-top:0;margin-bottom:10px;" onclick="playDifferentGame()">🎲 جرب لعبة تانية</button>
       <button class="btn-google" style="margin-top:0;" onclick="exitRoom()">الخروج من الغرفة</button>
     </div>
   </div>
@@ -513,6 +516,24 @@
         <div class="profile-field">
           <div class="profile-field-label">رقم الهاتف</div>
           <div class="profile-field-val" id="pf-phone"></div>
+        </div>
+      </div>
+
+      <div class="profile-section-title">محفظتي</div>
+      <div class="profile-card wallet-card">
+        <div class="wallet-balance-row">
+          <div>
+            <div class="profile-field-label">رصيدك الحالي</div>
+            <div class="wallet-balance-amount" id="wallet-balance-amount">0 جنيه</div>
+          </div>
+          <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="toggleWalletTopup()">اشحن المحفظة</button>
+        </div>
+        <div id="wallet-topup-section" style="display:none;margin-top:14px;">
+          <div class="coupon-row">
+            <input class="coupon-input" id="wallet-topup-amount" type="number" placeholder="المبلغ بالجنيه" min="1">
+            <button class="btn-coupon" onclick="initWalletTopup()">تأكيد</button>
+          </div>
+          <div id="wallet-paypal-container" style="margin-top:10px;"></div>
         </div>
       </div>
 
