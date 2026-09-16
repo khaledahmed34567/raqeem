@@ -177,6 +177,24 @@
     </div>
   </div>
 
+  <!-- VERIFY EMAIL (بوابة إجبارية قبل الدخول للتطبيق) -->
+  <div class="screen" id="screen-verify-email">
+    <div class="auth-header">
+      <img class="auth-logo" src="https://i.ibb.co/NdHgx21b/logo.png" alt="Capo" draggable="false" oncontextmenu="return false">
+      <div class="auth-title-main">فعّل بريدك الالكتروني</div>
+      <div class="auth-title-sub">لازم تفعّل بريدك الالكتروني الأول عشان تقدر تستخدم التطبيق</div>
+    </div>
+    <div class="auth-form active">
+      <div class="verify-notice show">
+        <strong>بعتنالك رسالة تفعيل على <span id="verify-email-addr"></span></strong>
+        افتح بريدك واضغط على رابط التفعيل، وبعدين ارجع هنا واضغط "تحققت من بريدي".
+      </div>
+      <button class="btn-primary" onclick="checkEmailVerified()">تحققت من بريدي</button>
+      <button class="btn-google" style="margin-top:10px;" onclick="resendVerificationEmail()">اعد ارسال رسالة التفعيل</button>
+      <button class="btn-google" style="margin-top:10px;" onclick="doSignOut()">تسجيل الخروج</button>
+    </div>
+  </div>
+
   <!-- HOME -->
   <div class="screen" id="screen-home">
     <div class="home-header">
@@ -531,7 +549,7 @@
           <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="toggleWalletTopup()">اشحن المحفظة</button>
         </div>
         <div id="wallet-topup-section" style="display:none;margin-top:14px;">
-          <div class="coupon-row">
+          <div class="coupon-row stacked">
             <input class="coupon-input" id="wallet-topup-amount" type="number" placeholder="المبلغ بالجنيه" min="1">
             <button class="btn-coupon" onclick="initWalletTopup()">تأكيد</button>
           </div>

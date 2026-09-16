@@ -798,6 +798,8 @@ img { pointer-events: none; -webkit-user-drag: none; }
   gap: 10px;
   margin-bottom: 16px;
 }
+.coupon-row.stacked { flex-direction: column; }
+.coupon-row.stacked .btn-coupon { width: 100%; }
 .coupon-input {
   flex: 1;
   padding: 12px 14px;

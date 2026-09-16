@@ -19,6 +19,58 @@ const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 const DEFAULT_MASCOT_URL = 'https://i.ibb.co/dJszqfYR/1000311864.png';
 
+// ===== SOUND EFFECTS (Web Audio API - أصوات مولدة برمجيًا، مفيش ملفات خارجية عشان تشتغل فورًا وأوفلاين) =====
+const SFX = (function() {
+  let ctx = null;
+  let muted = localStorage.getItem('capo_sound_muted') === '1';
+  function getCtx() {
+    if (!ctx) {
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { return null; }
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  // نغمة واحدة: تردد، مدة بالثانية، نوع الموجة، حجم الصوت
+  function tone(freq, dur, type, vol, delay) {
+    if (muted) return;
+    const c = getCtx();
+    if (!c) return;
+    const t0 = c.currentTime + (delay || 0);
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol || 0.12, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  return {
+    isMuted: () => muted,
+    toggle: function() {
+      muted = !muted;
+      localStorage.setItem('capo_sound_muted', muted ? '1' : '0');
+      if (!muted) this.click();
+      return muted;
+    },
+    click: () => tone(700, 0.06, 'sine', 0.08),
+    notify: () => tone(880, 0.12, 'sine', 0.1),
+    success: () => { tone(660, 0.1, 'sine', 0.12); tone(990, 0.16, 'sine', 0.12, 0.09); },
+    error: () => { tone(220, 0.18, 'sawtooth', 0.09); tone(160, 0.22, 'sawtooth', 0.08, 0.1); },
+    win: () => { tone(523, 0.14, 'triangle', 0.14); tone(659, 0.14, 'triangle', 0.14, 0.12); tone(784, 0.28, 'triangle', 0.16, 0.24); },
+    lose: () => { tone(300, 0.22, 'sawtooth', 0.12); tone(220, 0.3, 'sawtooth', 0.12, 0.16); },
+    reveal: () => { tone(440, 0.1, 'sine', 0.1); tone(660, 0.18, 'sine', 0.12, 0.1); },
+    vote: () => tone(500, 0.09, 'square', 0.08),
+    tick: () => tone(1000, 0.05, 'square', 0.06),
+    elim: () => { tone(180, 0.3, 'sawtooth', 0.14); tone(140, 0.35, 'sawtooth', 0.12, 0.15); }
+  };
+})();
+window.SFX = SFX;
+
 document.addEventListener('DOMContentLoaded', function() {
   const y = new Date().getFullYear();
   document.querySelectorAll('#copyright-year, #copyright-year-home').forEach(function(el) { el.textContent = y; });
@@ -190,6 +242,11 @@ setTimeout(() => {
         return;
       }
       currentUserData = snap.data();
+      if (!user.emailVerified) {
+        document.getElementById('verify-email-addr').textContent = user.email || '';
+        showScreen('verify-email');
+        return;
+      }
       updateProfileUI();
       showScreen('home');
       document.getElementById('bottom-nav').classList.add('visible');
@@ -296,7 +353,7 @@ async function doRegister() {
     return;
   }
   if (pass.length < 6) {
-    showToast('كلمة المرور يجب ان تكون 6 احرف على الاقل');
+    showToast('كلمة المرور يجب ان تكون 6 احرف على الاقل', 'error');
     return;
   }
 
@@ -309,7 +366,7 @@ async function doRegister() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), purchasedGames: []
     });
     document.getElementById('verify-notice').classList.add('show');
-    showToast('تم انشاء الحساب - تحقق من بريدك');
+    showToast('تم انشاء الحساب - تحقق من بريدك', 'success');
   } catch (e) {
     handleAuthError(e);
   }
@@ -339,6 +396,35 @@ async function doLogin() {
     handleAuthError(e);
   }
 }
+
+// بيتاكد لو المستخدم فعّل بريده فعلاً (لازم reload عشان ياخد اخر حالة من Firebase مش الكاش القديم)
+async function checkEmailVerified() {
+  if (!currentUser) return;
+  try {
+    await currentUser.reload();
+    if (currentUser.emailVerified) {
+      showToast('تم تفعيل بريدك بنجاح', 'success');
+      currentUserData = (await db.collection('users').doc(currentUser.uid).get()).data();
+      updateProfileUI();
+      showScreen('home');
+      document.getElementById('bottom-nav').classList.add('visible');
+      loadGames();
+      loadNotifications();
+    } else {
+      showToast('لسه ماتفعلش - تحقق من بريدك وحاول تاني', 'error');
+    }
+  } catch (e) { showToast('حصل خطأ - حاول تاني'); }
+}
+window.checkEmailVerified = checkEmailVerified;
+
+async function resendVerificationEmail() {
+  if (!currentUser) return;
+  try {
+    await currentUser.sendEmailVerification();
+    showToast('تم إعادة إرسال رسالة التفعيل');
+  } catch (e) { showToast('تعذر إرسال الرسالة الآن - حاول بعد شوية'); }
+}
+window.resendVerificationEmail = resendVerificationEmail;
 
 async function doGoogleSignIn() {
   try {
@@ -404,14 +490,14 @@ window.cancelGoogleSignup = cancelGoogleSignup;
 async function doForgotPassword() {
   const email = document.getElementById('login-identifier').value.trim();
   if (!email || loginMethod !== 'email') {
-    showToast('ادخل بريدك الالكتروني أولاً');
+    showToast('ادخل بريدك الالكتروني أولاً', 'error');
     return;
   }
   try {
     await auth.sendPasswordResetEmail(email);
     document.getElementById('forgot-notice').classList.add('show');
   } catch (e) {
-    showToast('البريد غير موجود');
+    showToast('البريد غير موجود', 'error');
   }
 }
 
@@ -436,7 +522,7 @@ function handleAuthError(e) {
     'auth/too-many-requests': 'محاولات كثيرة - انتظر قليلاً',
     'auth/popup-closed-by-user': 'تم الغاء العملية'
   };
-  showToast(msgs[e.code] || 'حدث خطأ - حاول مرة اخرى');
+  showToast(msgs[e.code] || 'حدث خطأ - حاول مرة اخرى', 'error');
 }
 
 // ===== NAVIGATION =====
@@ -460,6 +546,7 @@ function showScreen(id) {
 }
 
 function navigateTo(id) {
+  SFX.click();
   const active = document.querySelector('.screen.active');
   if (active) screenHistory.push(active.id.replace('screen-', ''));
   showScreen(id);
@@ -678,7 +765,7 @@ async function payGameWithWallet() {
   const g = currentGameData;
   const price = currentGamePriceAfterDiscount;
   const balance = currentUserData.walletBalance || 0;
-  if (balance < price) { showToast('رصيدك في المحفظة مش كافي - اشحن الأول من صفحة حسابي'); return; }
+  if (balance < price) { showToast('رصيدك في المحفظة مش كافي - اشحن الأول من صفحة حسابي', 'error'); return; }
   const walletPayBtn = document.getElementById('detail-wallet-pay-btn');
   walletPayBtn.disabled = true;
   try {
@@ -690,7 +777,7 @@ async function payGameWithWallet() {
     currentUserData.purchasedGames = (currentUserData.purchasedGames || []).concat([g.id]);
     const walletEl = document.getElementById('wallet-balance-amount');
     if (walletEl) walletEl.textContent = currentUserData.walletBalance + ' جنيه';
-    showToast('تم الدفع من المحفظة - اللعبة بقت ملكك دايمًا');
+    showToast('تم الدفع من المحفظة - اللعبة بقت ملكك دايمًا', 'success');
     walletPayBtn.style.display = 'none';
     document.getElementById('coupon-section').style.display = 'none';
     const actionBtn = document.getElementById('detail-action-btn');
@@ -698,7 +785,7 @@ async function payGameWithWallet() {
     actionBtn.onclick = function() { navigateTo('join'); };
   } catch (e) {
     walletPayBtn.disabled = false;
-    showToast('تعذر إتمام الدفع من المحفظة');
+    showToast('تعذر إتمام الدفع من المحفظة', 'error');
   }
 }
 window.payGameWithWallet = payGameWithWallet;
@@ -798,7 +885,7 @@ function renderPayPal(g) {
       await actions.order.capture();
       await db.collection('users').doc(currentUser.uid).update({ purchasedGames: firebase.firestore.FieldValue.arrayUnion(g.id) });
       currentUserData.purchasedGames = (currentUserData.purchasedGames || []).concat([g.id]);
-      showToast('تم الشراء بنجاح');
+      showToast('تم الشراء بنجاح', 'success');
       const actionBtn = document.getElementById('detail-action-btn');
       actionBtn.textContent = 'انضم لغرفة';
       actionBtn.onclick = function() { navigateTo('join'); };
@@ -816,7 +903,7 @@ window.toggleWalletTopup = toggleWalletTopup;
 
 function initWalletTopup() {
   const amount = parseFloat(document.getElementById('wallet-topup-amount').value);
-  if (!amount || amount <= 0) { showToast('اكتب مبلغ صحيح'); return; }
+  if (!amount || amount <= 0) { showToast('اكتب مبلغ صحيح', 'error'); return; }
   if (window.paypal) { renderWalletPayPal(amount); return; }
   const script = document.createElement('script');
   script.src = 'https://www.paypal.com/sdk/js?client-id=AW_M1acPABnrPp2AJklYALUDZ1OUA2NS6CPGp3D3ZB9fVIfmfD87le9WZmHF3fOCqINDO3RAtQGWLteZ&currency=USD';
@@ -840,10 +927,10 @@ function renderWalletPayPal(amount) {
         });
         currentUserData.walletBalance = (currentUserData.walletBalance || 0) + amount;
         document.getElementById('wallet-balance-amount').textContent = currentUserData.walletBalance + ' جنيه';
-        showToast('تم شحن ' + amount + ' جنيه في محفظتك');
+        showToast('تم شحن ' + amount + ' جنيه في محفظتك', 'success');
         document.getElementById('wallet-topup-section').style.display = 'none';
         document.getElementById('wallet-topup-amount').value = '';
-      } catch (e) { showToast('حصل خطأ في تحديث الرصيد - كلم الدعم'); }
+      } catch (e) { showToast('حصل خطأ في تحديث الرصيد - كلم الدعم', 'error'); }
     },
     onError: function() { showToast('فشل الدفع - حاول مرة اخرى'); }
   }).render('#wallet-paypal-container');
@@ -854,14 +941,14 @@ async function applyCoupon() {
   if (!code) return;
   try {
     const snap = await db.collection('coupons').where('code', '==', code).where('active', '==', true).get();
-    if (snap.empty) { showToast('كود الخصم غير صحيح'); return; }
+    if (snap.empty) { showToast('كود الخصم غير صحيح', 'error'); return; }
     const coupon = snap.docs[0].data();
-    if (coupon.gameId && coupon.gameId !== selectedGameId) { showToast('هذا الكود غير صالح لهذه اللعبة'); return; }
+    if (coupon.gameId && coupon.gameId !== selectedGameId) { showToast('هذا الكود غير صالح لهذه اللعبة', 'error'); return; }
     const discount = coupon.discount || 0;
     if (discount >= 100) {
       await db.collection('users').doc(currentUser.uid).update({ purchasedGames: firebase.firestore.FieldValue.arrayUnion(selectedGameId) });
       currentUserData.purchasedGames = (currentUserData.purchasedGames || []).concat([selectedGameId]);
-      showToast('تم تفعيل الكود - اللعبة مجانية الان');
+      showToast('تم تفعيل الكود - اللعبة مجانية الان', 'success');
       document.getElementById('detail-action-btn').textContent = 'انضم لغرفة';
     } else {
       const newPrice = (parseFloat(currentGameData.price || 0) * (1 - discount/100)).toFixed(2);
@@ -870,9 +957,9 @@ async function applyCoupon() {
       const actionBtn = document.getElementById('detail-action-btn');
       if (actionBtn) actionBtn.textContent = 'اشتر الان - ' + newPrice + ' جنيه';
       updateWalletPayButton();
-      showToast('تم تطبيق خصم ' + discount + '%');
+      showToast('تم تطبيق خصم ' + discount + '%', 'success');
     }
-  } catch (e) { showToast('خطأ في تطبيق الكود'); }
+  } catch (e) { showToast('خطأ في تطبيق الكود', 'error'); }
 }
 
 // ===== ROOM =====
@@ -1020,7 +1107,7 @@ async function handleCreateRoomGameCheck(checkbox, gameId) {
   const balance = (currentUserData && currentUserData.walletBalance) || 0;
   if (balance < price) {
     checkbox.checked = false;
-    showToast('رصيدك في المحفظة مش كافي - اشحن المحفظة الأول من صفحة حسابي');
+    showToast('رصيدك في المحفظة مش كافي - اشحن المحفظة الأول من صفحة حسابي', 'error');
     return;
   }
   checkbox.disabled = true;
@@ -1033,11 +1120,11 @@ async function handleCreateRoomGameCheck(checkbox, gameId) {
     currentUserData.purchasedGames = (currentUserData.purchasedGames || []).concat([gameId]);
     const walletEl = document.getElementById('wallet-balance-amount');
     if (walletEl) walletEl.textContent = currentUserData.walletBalance + ' جنيه';
-    showToast('تم خصم ' + price + ' جنيه من محفظتك - اللعبة بقت ملكك دايمًا');
+    showToast('تم خصم ' + price + ' جنيه من محفظتك - اللعبة بقت ملكك دايمًا', 'success');
     checkbox.dataset.owned = 'true';
   } catch (e) {
     checkbox.checked = false;
-    showToast('تعذر إتمام الشراء من المحفظة');
+    showToast('تعذر إتمام الشراء من المحفظة', 'error');
   }
   checkbox.disabled = false;
   updateMaxPlayersOptions();
@@ -1423,7 +1510,7 @@ function setupRoomListeners() {
     if (!snap.exists) {
       // الدوكيومنت بتاعنا اتمسح وإحنا لسه في الغرفة (مش إحنا اللي عملنا exitRoom) = صاحب الغرفة طردنا
       if (currentRoomId && !isSpectator) {
-        showToast('تم إخراجك من الغرفة');
+        showToast('تم إخراجك من الغرفة', 'error');
         exitRoom();
       }
       return;
@@ -1698,7 +1785,7 @@ async function kickPlayerFromRoom(uid) {
   if (currentRoom.status !== 'waiting') { showToast('التاعب مينفعش غير قبل بدء اللعبة'); return; }
   try {
     await db.collection('rooms').doc(currentRoomId).collection('players').doc(uid).delete();
-    showToast('تم طرد اللاعب');
+    showToast('تم طرد اللاعب', 'success');
   } catch (e) { showToast('تعذر طرد اللاعب'); }
 }
 
@@ -1895,8 +1982,8 @@ async function submitVote() {
     votedRound = currentRoom.currentRound || 1;
     document.getElementById('btn-submit-vote').disabled = true;
     document.getElementById('btn-submit-vote').textContent = 'تم التصويت';
-    showToast('تم تسجيل تصويتك');
-  } catch (e) { showToast('فشل التصويت'); }
+    showToast('تم تسجيل تصويتك', 'success');
+  } catch (e) { showToast('فشل التصويت', 'error'); }
 }
 
 function buildVoteCandidates(players) {
@@ -2220,10 +2307,13 @@ async function submitGameRating() {
 window.submitGameRating = submitGameRating;
 
 // ===== UTILS =====
-function showToast(msg) {
+function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
+  if (type === 'success') SFX.success();
+  else if (type === 'error') SFX.error();
+  else SFX.notify();
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
