@@ -89,10 +89,14 @@ let currentRating = 0;
 let currentDetailRating = 0;
 let isEliminated = false;
 let isSpectator = false;
+let isTrueSpectator = false; // فرق عن isSpectator: ده بس لحد فتح الغرفة كمتفرج من غير ما يكون لعب فيها اصلاً
 let ownCharacterRevealed = null;
 let ownIsCapo = false;
 let loginMethod = 'email';
 let roomListeners = [];
+let presenceInterval = null;
+let presenceRefreshInterval = null;
+let lastNotifiedVoteEndsAtMs = null;
 let ownReady = false;
 let lastPlayersArr = [];
 let votedRound = null;
@@ -106,7 +110,7 @@ let clueSpotlightTimerId = null;
 let voteCountdownInterval = null;
 const STORY_REVEAL_MS = 60000;     // قصة القضية تفضل ظاهرة 60 ثانية
 const CLUE_SPOTLIGHT_MS = 60000;   // دليل كل جولة يفضل ظاهر 60 ثانية
-const VOTE_WINDOW_MS = 90000;      // مدة عداد التصويت التقريبية لكل جولة
+const VOTE_WINDOW_MS = 300000;     // مدة عداد التصويت لكل جولة (5 دقايق)
 
 // ===== EXPOSE TO WINDOW =====
 window.switchAuthTab = switchAuthTab;
@@ -963,6 +967,12 @@ async function applyCoupon() {
 }
 
 // ===== ROOM =====
+async function hashText(text) {
+  const enc = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -998,6 +1008,17 @@ async function joinRoomByCode(code) {
       showToast('الغرفة مقفولة حالياً ولا تقبل لاعبين جدد');
       return;
     }
+    // غرفة خاصة بكلمة سر - نطلبها من أي لاعب جديد (مش من الأعضاء الحاليين اللي بيرجعوا للغرفة)
+    if (currentRoom.isPublic === false && currentRoom.passwordHash && !existingSelf.exists) {
+      const pass = prompt('دي غرفة خاصة - اكتب كلمة السر:');
+      if (pass === null) { currentRoomId = null; currentRoom = null; return; }
+      const hash = await hashText(pass.trim());
+      if (hash !== currentRoom.passwordHash) {
+        currentRoomId = null; currentRoom = null;
+        showToast('كلمة السر غلط', 'error');
+        return;
+      }
+    }
     // متدخلش عدد لاعبين اكتر من العدد المحدد للغرفة
     if (currentRoom.maxPlayers && !existingSelf.exists) {
       const countSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
@@ -1029,6 +1050,7 @@ async function joinRoomByCode(code) {
 function enterRoom() {
   isEliminated = false;
   isSpectator = false;
+  isTrueSpectator = false;
   selectedVote = null;
   ownCharacterRevealed = null;
   resetRoomFeatureState();
@@ -1049,6 +1071,7 @@ function resetRoomFeatureState() {
   ownIsCapo = false;
   lastPlayersArr = [];
   votedRound = null;
+  lastNotifiedVoteEndsAtMs = null;
   clearInterval(caseStoryTimerId); caseStoryTimerId = null;
   clearInterval(clueSpotlightTimerId); clueSpotlightTimerId = null;
   clearInterval(voteCountdownInterval); voteCountdownInterval = null;
@@ -1169,9 +1192,14 @@ async function createRoomByPlayer() {
   const firstGame = createRoomGamesCache.find(g => g.id === selectedIds[0]);
   const maxPlayersSelect = document.getElementById('create-room-maxplayers');
   const maxPlayers = maxPlayersSelect && maxPlayersSelect.value ? parseInt(maxPlayersSelect.value, 10) : null;
+  const isPrivateCb = document.getElementById('create-room-private-cb');
+  const isPrivate = !!(isPrivateCb && isPrivateCb.checked);
+  const passwordInput = document.getElementById('create-room-password');
+  const password = passwordInput ? passwordInput.value.trim() : '';
+  if (isPrivate && !password) { showToast('اكتب كلمة سر للغرفة الخاصة', 'error'); return; }
   try {
     const roomRef = db.collection('rooms').doc();
-    await roomRef.set({
+    const roomData = {
       name: name,
       code: generatePlayerRoomCode(),
       ownerUid: currentUser.uid,
@@ -1187,11 +1215,13 @@ async function createRoomByPlayer() {
       eliminatedPlayers: [],
       capoEliminated: false,
       capoWon: false,
-      isPublic: true,
+      isPublic: !isPrivate,
       locked: false,
       maxPlayers: maxPlayers,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    if (isPrivate) roomData.passwordHash = await hashText(password);
+    await roomRef.set(roomData);
     currentRoomId = roomRef.id;
     const roomSnap = await roomRef.get();
     currentRoom = roomSnap.data();
@@ -1241,6 +1271,7 @@ async function enterSpectateRoom(roomId) {
     currentRoomId = roomId;
     currentRoom = doc.data();
     isSpectator = true;
+    isTrueSpectator = true;
     isEliminated = false;
     ownCharacterRevealed = null;
     resetRoomFeatureState();
@@ -1268,7 +1299,7 @@ async function startGameInRoom() {
 
     const playersSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
     const playerDocs = playersSnap.docs;
-    if (playerDocs.length < 2) { showToast('لازم على الاقل لاعبين اتنين'); return; }
+    if (playerDocs.length < 3) { showToast('لازم على الاقل 3 لاعبين عشان التصويت يبقى له معنى (لعبة بين اتنين بس بتتعادل كل مرة)', 'error'); return; }
     if (currentRoom.maxPlayers && playerDocs.length !== currentRoom.maxPlayers) {
       showToast('لازم الغرفة تكتمل بالظبط بـ ' + currentRoom.maxPlayers + ' لاعبين عشان تبدأ (حالياً ' + playerDocs.length + ')');
       return;
@@ -1284,7 +1315,8 @@ async function startGameInRoom() {
     const batch = db.batch();
     playerDocs.forEach((pDoc, idx) => {
       const ch = shuffled[idx];
-      batch.update(pDoc.ref, {
+      // بيانات الشخصية السرية (وهل هو كابو) بتتخزن في مستند خاص تحت كل لاعب - مش في مستند اللاعب العام اللي كل حد في الغرفة بيقدر يقراه
+      batch.set(pDoc.ref.collection('private').doc('char'), {
         characterId: ch.id || ('c' + idx),
         characterName: ch.name || '',
         characterBio: ch.bio || '',
@@ -1337,31 +1369,79 @@ async function endRoundInRoom() {
       if (tally[uid] > maxCount) { maxCount = tally[uid]; topUids = [uid]; }
       else if (tally[uid] === maxCount) { topUids.push(uid); }
     });
-    const eliminatedUid = topUids[Math.floor(Math.random() * topUids.length)];
+
+    const roomRef = db.collection('rooms').doc(currentRoomId);
+
+    // تعادل في الأصوات - محدش يتصيد، وبنفتح دقيقة تصويت تانية على نفس الجولة
+    if (topUids.length > 1) {
+      const aliasSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
+      const aliasMapTie = {};
+      aliasSnap.forEach(d => { const pd = d.data(); aliasMapTie[d.id] = pd.alias || pd.name || 'لاعب'; });
+      const tieBatch = db.batch();
+      votesSnap.forEach(d => tieBatch.delete(d.ref));
+      tieBatch.set(roomRef.collection('voteHistory').doc('r' + (currentRoom.currentRound || 1) + '_tie' + Date.now()), {
+        round: currentRoom.currentRound || 1,
+        tie: true,
+        votes: votesSnap.docs.map(d => {
+          const v = d.data();
+          return { voterAlias: v.voterAlias || aliasMapTie[v.voterUid] || '', targetAlias: aliasMapTie[v.targetUid] || '' };
+        })
+      });
+      tieBatch.update(roomRef, {
+        votingOpen: true,
+        voteEndsAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 60000))
+      });
+      await tieBatch.commit();
+      showToast('تعادل في التصويت - دقيقة تصويت تانية عشان نحسم', 'info');
+      return;
+    }
+    const eliminatedUid = topUids[0];
 
     const playersSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
-    const allPlayers = playersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    // isCapo بقى مخزن في مستند خاص تحت كل لاعب - لازم نجيبه عشان نحسب نتيجة اللعبة (صاحب الغرفة بس اللي بيعمل الحساب ده)
+    const allPlayers = [];
+    for (const d of playersSnap.docs) {
+      const privSnap = await d.ref.collection('private').doc('char').get();
+      const priv = privSnap.exists ? privSnap.data() : {};
+      allPlayers.push({ uid: d.id, ...d.data(), ...priv });
+    }
     const newEliminated = (currentRoom.eliminatedPlayers || []).slice();
     if (newEliminated.indexOf(eliminatedUid) === -1) newEliminated.push(eliminatedUid);
     const remainingCapos = allPlayers.filter(p => p.isCapo && newEliminated.indexOf(p.uid) === -1);
     const remainingInnocents = allPlayers.filter(p => !p.isCapo && newEliminated.indexOf(p.uid) === -1);
 
+    // نسجّل مين صوّت لمين في الجولة دي عشان تقرير نهاية اللعبة
+    const aliasMap = {};
+    allPlayers.forEach(p => { aliasMap[p.uid] = p.alias || p.name || 'لاعب'; });
+    const eliminatedAlias = aliasMap[eliminatedUid] || '';
+    const voteRecords = votesSnap.docs.map(d => {
+      const v = d.data();
+      return { voterAlias: v.voterAlias || aliasMap[v.voterUid] || '', targetAlias: aliasMap[v.targetUid] || '' };
+    });
+
     const batch = db.batch();
     votesSnap.forEach(d => batch.delete(d.ref));
-    const roomRef = db.collection('rooms').doc(currentRoomId);
+    batch.set(roomRef.collection('voteHistory').doc('r' + (currentRoom.currentRound || 1)), {
+      round: currentRoom.currentRound || 1,
+      eliminatedAlias: eliminatedAlias,
+      votes: voteRecords
+    });
 
     if (remainingCapos.length === 0) {
       // كل الكابوهات اتصيدوا - الأبرياء كسبوا
       batch.update(roomRef, { eliminatedPlayers: newEliminated, capoEliminated: true, votingOpen: false, roundDone: true });
       const winners = allPlayers.filter(p => !p.isCapo && newEliminated.indexOf(p.uid) === -1);
       recordGameWinners(batch, winners);
-    } else if (remainingInnocents.length === 0) {
-      // كل الأبرياء خرجوا وفضل الكابو/الكابوهات - يكسبوا فوراً من غير ما ننتظر اخر جولة
+      batch.update(roomRef, { finalRoles: buildFinalRolesReveal(allPlayers) });
+    } else if (remainingCapos.length >= remainingInnocents.length) {
+      // عدد الكابوهات بقى مساوي أو أكتر من الأبرياء المتبقيين - الكابوهات يفوزوا فورًا (لو ٢ كابوز فضلوا وبريء واحد مثلاً)
       batch.update(roomRef, { eliminatedPlayers: newEliminated, capoWon: true, votingOpen: false, roundDone: true });
       recordGameWinners(batch, remainingCapos);
+      batch.update(roomRef, { finalRoles: buildFinalRolesReveal(allPlayers) });
     } else if ((currentRoom.currentRound || 1) >= (currentRoom.totalRounds || 5)) {
       batch.update(roomRef, { eliminatedPlayers: newEliminated, capoWon: true, votingOpen: false, roundDone: true });
       recordGameWinners(batch, remainingCapos);
+      batch.update(roomRef, { finalRoles: buildFinalRolesReveal(allPlayers) });
     } else {
       batch.update(roomRef, {
         eliminatedPlayers: newEliminated,
@@ -1381,6 +1461,18 @@ async function endRoundInRoom() {
 window.endRoundInRoom = endRoundInRoom;
 
 // يسجّل كل لاعب فايز في مجموعة wins عشان ميزة "أبرز اللاعبين" - بيتنفذ مرة واحدة بس (صاحب الغرفة هو اللي بينده الدالة دي)
+// بيبني قايمة كشف الأدوار اللي بتتعرض في نهاية اللعبة بس (مين كان كابو ومين شخصيته ايه)
+function buildFinalRolesReveal(allPlayers) {
+  return allPlayers.map(function(p) {
+    return {
+      alias: p.alias || p.name || 'لاعب',
+      name: p.name || '',
+      characterName: p.characterName || '',
+      isCapo: !!p.isCapo
+    };
+  });
+}
+
 function recordGameWinners(batch, winners) {
   const gameId = currentRoom.currentGameId || '';
   const gameName = currentRoom.gameName || '';
@@ -1410,12 +1502,7 @@ async function playNextGameInRoom() {
     const playersSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
     const batch = db.batch();
     playersSnap.forEach(d => {
-      batch.update(d.ref, {
-        characterId: firebase.firestore.FieldValue.delete(),
-        characterName: firebase.firestore.FieldValue.delete(),
-        characterBio: firebase.firestore.FieldValue.delete(),
-        isCapo: firebase.firestore.FieldValue.delete()
-      });
+      batch.delete(d.ref.collection('private').doc('char'));
     });
     batch.update(db.collection('rooms').doc(currentRoomId), {
       currentGameIndex: nextIndex,
@@ -1460,8 +1547,40 @@ window.closeCharacterReveal = function() {
   if (overlay) overlay.classList.remove('show');
 };
 
+// ===== LOCAL NOTIFICATIONS (بداية التصويت / ظهور دليل جديد) =====
+// إشعار محلي بس لما التاب يبقى في الخلفية (لو التطبيق مفتوح قدام المستخدم أصلاً هو شايف التغيير على الشاشة زي ما هو)
+function notifyLocal(title, body) {
+  try {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission !== 'granted') return;
+    if (!document.hidden) return;
+    const n = new Notification(title, { body: body, icon: 'https://i.ibb.co/cX7FVw1b/icon.png', tag: 'capo-room' });
+    setTimeout(function() { try { n.close(); } catch (e) {} }, 8000);
+  } catch (e) { /* بعض المتصفحات بترفض الاشعارات من غير سياق تفاعل مباشر - نتجاهل بهدوء */ }
+}
+function requestNotifPermissionOnce() {
+  try {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'default') Notification.requestPermission().catch(function() {});
+  } catch (e) {}
+}
+
 function setupRoomListeners() {
   clearRoomListeners();
+
+  // presence - نحدّث وقت آخر نشاط كل 20 ثانية عشان باقي اللاعبين يشوفوا مين متصل دلوقتي فعلاً
+  if (!isTrueSpectator && currentUser) {
+    requestNotifPermissionOnce();
+    const updatePresence = function() {
+      db.collection('rooms').doc(currentRoomId).collection('players').doc(currentUser.uid)
+        .update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }).catch(function() {});
+    };
+    updatePresence();
+    presenceInterval = setInterval(updatePresence, 20000);
+    presenceRefreshInterval = setInterval(function() {
+      if (lastPlayersArr.length) renderPlayers(lastPlayersArr);
+    }, 15000);
+  }
 
   // room status
   const unsub1 = db.collection('rooms').doc(currentRoomId).onSnapshot((snap) => {
@@ -1505,7 +1624,7 @@ function setupRoomListeners() {
   });
   roomListeners.push(unsub4);
 
-  // own character reveal + own ready state + kick detection (private, only this player sees it)
+  // own ready state + kick detection (public doc - كل لاعبي الغرفة يقدروا يقروه)
   const unsub5 = db.collection('rooms').doc(currentRoomId).collection('players').doc(currentUser.uid).onSnapshot((snap) => {
     if (!snap.exists) {
       // الدوكيومنت بتاعنا اتمسح وإحنا لسه في الغرفة (مش إحنا اللي عملنا exitRoom) = صاحب الغرفة طردنا
@@ -1517,19 +1636,29 @@ function setupRoomListeners() {
     }
     const p = snap.data();
     ownReady = !!p.ready;
-    ownIsCapo = !!p.isCapo;
     updateReadyButtonUI();
+  });
+  roomListeners.push(unsub5);
+
+  // شخصيتنا السرية وهل احنا كابو - مستند خاص بينا بس (private/char) محدش تاني يقدر يقراه غيرنا
+  const unsub6 = db.collection('rooms').doc(currentRoomId).collection('players').doc(currentUser.uid).collection('private').doc('char').onSnapshot((snap) => {
+    const p = snap.exists ? snap.data() : {};
+    ownIsCapo = !!p.isCapo;
     if (p.characterId && p.characterId !== ownCharacterRevealed) {
       ownCharacterRevealed = p.characterId;
       showCharacterReveal(p);
+    } else if (!p.characterId) {
+      ownCharacterRevealed = null;
     }
   });
-  roomListeners.push(unsub5);
+  roomListeners.push(unsub6);
 }
 
 function clearRoomListeners() {
   roomListeners.forEach(u => u());
   roomListeners = [];
+  if (presenceInterval) { clearInterval(presenceInterval); presenceInterval = null; }
+  if (presenceRefreshInterval) { clearInterval(presenceRefreshInterval); presenceRefreshInterval = null; }
 }
 
 function updateRoomUI() {
@@ -1555,6 +1684,15 @@ function updateRoomUI() {
     if (startBtn) startBtn.style.display = (currentRoom.ownerUid === currentUser.uid) ? 'block' : 'none';
     updateReadyButtonUI();
     updateRoomLockUI();
+    // لعبة جديدة هتبدأ في نفس الغرفة (اللعبة السابقة خلصت) - نفضّي حالة "خرجت/بتتفرج" القديمة
+    // عن أي لاعب حقيقي (مش عن المتفرج الحقيقي اللي مكنش لاعب اصلاً) عشان محدش يفضل عالق برا اللعبة الجديدة
+    if (!isTrueSpectator && round === 0 && (isEliminated || isSpectator)) {
+      isEliminated = false;
+      isSpectator = false;
+      document.getElementById('eliminated-overlay').classList.remove('show');
+      document.getElementById('spectator-bar').classList.remove('show');
+      document.getElementById('chat-input').disabled = false;
+    }
   } else if (status === 'active') {
     document.getElementById('waiting-screen').style.display = 'none';
     document.getElementById('active-game-area').style.display = 'flex';
@@ -1566,6 +1704,11 @@ function updateRoomUI() {
     if (currentRoom.votingOpen) {
       document.getElementById('vote-badge').classList.add('show');
       document.getElementById('vote-round-info').textContent = 'صوت على من تعتقد انه كابو - جولة ' + round;
+      const voteEndsMs = currentRoom.voteEndsAt ? currentRoom.voteEndsAt.toMillis() : null;
+      if (voteEndsMs && lastNotifiedVoteEndsAtMs !== voteEndsMs) {
+        lastNotifiedVoteEndsAtMs = voteEndsMs;
+        notifyLocal('بدأ التصويت', 'جولة ' + round + ' - صوّت على مين تعتقد انه كابو قبل ما الوقت يخلص');
+      }
       startVoteCountdown(currentRoom.voteEndsAt);
     } else {
       document.getElementById('vote-badge').classList.remove('show');
@@ -1589,8 +1732,17 @@ function updateRoomUI() {
     }
     document.getElementById('spectator-bar').classList.add('show');
     document.getElementById('chat-input').disabled = true;
-    document.getElementById('btn-submit-vote').disabled = true;
+    // اللاعب البريء اللي خرج لسه يقدر "يصوت كشبح" في الجولات الجاية - الكابو المكشوف بس هو اللي يتقفل عليه التصويت تمامًا
+    if (ownIsCapo) {
+      document.getElementById('btn-submit-vote').disabled = true;
+    }
   }
+
+  // اخفاء كود الغرفة وزرار المشاركة عن أي حد في وضع المشاهدة (سواء متفرج حقيقي او لاعب خرج)
+  const roomCodeBox = document.getElementById('room-code-box');
+  if (roomCodeBox) roomCodeBox.style.display = isSpectator ? 'none' : '';
+  const shareBtnWaiting = document.getElementById('btn-share-room-waiting');
+  if (shareBtnWaiting) shareBtnWaiting.style.display = isSpectator ? 'none' : '';
 
   // check if capo was eliminated (game over early)
   if (currentRoom.capoEliminated) {
@@ -1670,6 +1822,7 @@ function showClueSpotlight(round, endsAtMs) {
   document.getElementById('spotlight-round-label').textContent = 'دليل الجولة ' + round;
 
   if (isNew) {
+    notifyLocal('دليل جديد', 'ظهر دليل جديد في الجولة ' + round + ' - افتح اللعبة بسرعة');
     document.getElementById('spotlight-clues-wrap').innerHTML = '<div style="padding:10px;"><div class="spinner"></div></div>';
     ensureRoomGameLoaded().then(function(game) {
       const clues = ((game && game.clues) || []).filter(function(c) { return (c.round || 1) === round; });
@@ -1819,10 +1972,11 @@ function buildRoundDots(current, total, done) {
 function renderChatMsg(msg, container) {
   const isMe = msg.uid === currentUser.uid;
   const isSystem = msg.type === 'system';
+  const isLastWords = msg.type === 'lastwords';
   const div = document.createElement('div');
-  div.className = 'chat-msg' + (isSystem ? ' system' : isMe ? ' mine' : ' other');
+  div.className = 'chat-msg' + (isSystem ? ' system' : isMe ? ' mine' : ' other') + (isLastWords ? ' last-words' : '');
   if (!isSystem) {
-    div.innerHTML = '<div class="chat-msg-sender">' + (msg.alias || '') + '</div>'
+    div.innerHTML = '<div class="chat-msg-sender">' + (isLastWords ? 'الكلمة الأخيرة لـ ' : '') + (msg.alias || '') + '</div>'
       + '<div>' + escapeHtml(msg.text || '') + '</div>'
       + '<div class="chat-msg-time">' + formatTime(msg.time) + '</div>';
   } else {
@@ -1915,10 +2069,19 @@ function buildClueCard(clue, idx) {
 function renderPlayers(snap) {
   const container = document.getElementById('players-list');
   container.innerHTML = '';
-  snap.forEach(d => {
-    const p = d.data();
+  const now = Date.now();
+  const items = snap.docs ? snap.docs.map(d => ({ uid: d.id, ...d.data() })) : snap;
+  items.forEach(p => {
     const eliminated = (currentRoom && currentRoom.eliminatedPlayers && currentRoom.eliminatedPlayers.includes(p.uid));
     const isMe = p.uid === currentUser.uid;
+    let statusClass = 'status-eliminated', statusText = 'خرج';
+    if (!eliminated) {
+      // حالة الاتصال لحظيًا - بنعتمد على آخر نبضة (heartbeat) وصلت من جهاز اللاعب كل 20 ثانية
+      const lastActiveMs = (p.lastActive && p.lastActive.toMillis) ? p.lastActive.toMillis() : 0;
+      const online = (now - lastActiveMs) < 35000;
+      statusClass = online ? 'status-active' : 'status-offline';
+      statusText = online ? 'متصل الآن' : 'غير متصل';
+    }
     container.innerHTML += '<div class="player-item" onclick="openPlayerCard(\'' + p.uid + '\',\'' + escapeHtml(p.alias || '') + '\',\'' + escapeHtml(p.name || '') + '\',\'' + escapeHtml(p.bio || '') + '\')">'
       + '<div class="player-avatar">'
       + '<img class="player-avatar-logo" src="https://i.ibb.co/NdHgx21b/logo.png" alt="" draggable="false" oncontextmenu="return false">'
@@ -1927,8 +2090,8 @@ function renderPlayers(snap) {
       + '<div class="player-name">' + escapeHtml(p.name || 'لاعب') + (isMe ? ' <span style="font-size:0.7rem;color:var(--accent-gold-dim)">(انت)</span>' : '') + '</div>'
       + '<div class="player-alias">' + escapeHtml(p.alias || '') + '</div>'
       + '</div>'
-      + '<div class="player-status ' + (eliminated ? 'status-eliminated' : 'status-active') + '">'
-      + (eliminated ? 'خرج' : 'نشط')
+      + '<div class="player-status ' + statusClass + '">'
+      + statusText
       + '</div>'
       + '</div>';
   });
@@ -1955,12 +2118,19 @@ function renderVotes(snap) {
   });
 }
 
+// عدد اللاعبين النشطين (اللي لسه في اللعبة، مش خارجين) دلوقتي
+function activePlayerCount() {
+  const eliminatedSet = (currentRoom && currentRoom.eliminatedPlayers) || [];
+  return lastPlayersArr.filter(p => eliminatedSet.indexOf(p.uid) === -1).length;
+}
+
 function selectVote(uid) {
-  // كان الشرط بيمنع التصويت للمقصيين اللي مش في وضع المشاهدة فقط، وده كان بيسمح
-  // (1) للاعب المقصي اللي دخل وضع المشاهدة انه يصوت برضو، و(2) لأي حد بيتفرج على غرفة مش لاعب فيها
-  // إنه يصوت. اتصلحت هنا عشان "ميعرفش يتحكم أو يلعب" فعلاً تنطبق على كل مشاهد وكل مقصي
-  if (isEliminated || isSpectator) return;
+  // متفرج حقيقي (مكنش لاعب اصلاً) او كابو اتكشف = ممنوع يصوت. الاقصاء البريء لسه يقدر يصوت "كشبح" في الجولات الجاية
+  if (isTrueSpectator || (isEliminated && ownIsCapo)) return;
   if (!currentRoom || !currentRoom.votingOpen) return;
+  // فضل لاعبين نشطين اتنين بس - أي تصويت بينهم هيتعادل كل مرة (كل واحد مش هيقدر يصوت غير للتاني).
+  // في الحالة دي الأبرياء اللي خرجوا قبل كده (الأشباح) بس هما اللي يحسموا مين الكابو، مش الاتنين الباقيين
+  if (!isEliminated && activePlayerCount() <= 2) { showToast('العدد وصل لاتنين بس - الأشباح (اللي خرجوا) هما بس اللي يحسموا دلوقتي', 'info'); return; }
   selectedVote = uid;
   document.querySelectorAll('.vote-candidate').forEach(el => {
     el.classList.toggle('selected', el.dataset.uid === uid);
@@ -1979,7 +2149,7 @@ async function submitVote() {
       round: currentRoom.currentRound || 1,
       time: firebase.firestore.FieldValue.serverTimestamp()
     });
-    votedRound = currentRoom.currentRound || 1;
+    votedRound = (currentRoom.currentRound || 1) + ':' + (currentRoom.voteEndsAt ? currentRoom.voteEndsAt.toMillis() : '');
     document.getElementById('btn-submit-vote').disabled = true;
     document.getElementById('btn-submit-vote').textContent = 'تم التصويت';
     showToast('تم تسجيل تصويتك', 'success');
@@ -2010,8 +2180,9 @@ function buildVoteCandidates(players) {
   // اعادة ضبط زر التصويت حسب الجولة الحالية: لو صوّت فيها خليه معطل بـ"تم التصويت"، غير كده رجّعه لوضعه الافتراضي
   const submitBtn = document.getElementById('btn-submit-vote');
   const round = currentRoom ? (currentRoom.currentRound || 1) : 1;
+  const roundKey = round + ':' + (currentRoom && currentRoom.voteEndsAt ? currentRoom.voteEndsAt.toMillis() : '');
   if (submitBtn) {
-    if (votedRound === round) {
+    if (votedRound === roundKey) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'تم التصويت';
     } else {
@@ -2032,7 +2203,7 @@ function showGameEnded() {
   resultMascot.style.display = 'none';
 
   // "فريقك" فاز ولا لأ - بناءً على هل انت كابو ولا لأ (مش بس هل نجيت من الاقصاء)
-  const iAmSpectatorLike = isSpectator;
+  const iAmSpectatorLike = isTrueSpectator;
   const iWon = capoWon ? ownIsCapo : !ownIsCapo;
 
   if (iAmSpectatorLike) {
@@ -2061,7 +2232,53 @@ function showGameEnded() {
   document.getElementById('waiting-screen').style.display = 'none';
   document.getElementById('active-game-area').style.display = 'none';
   document.getElementById('game-ended-screen').classList.add('show');
+
+  const reportBtn = document.getElementById('btn-toggle-report');
+  const reportWrap = document.getElementById('game-report-wrap');
+  if (reportBtn) reportBtn.style.display = (currentRoom && currentRoom.finalRoles) ? 'block' : 'none';
+  if (reportWrap) reportWrap.style.display = 'none';
+  if (reportBtn) reportBtn.textContent = 'شوف تقرير اللعبة';
 }
+
+// ===== END-OF-GAME REPORT (كشف الأدوار + تقرير التصويت لكل جولة) =====
+async function toggleGameReport() {
+  const wrap = document.getElementById('game-report-wrap');
+  const btn = document.getElementById('btn-toggle-report');
+  if (!wrap) return;
+  const opening = wrap.style.display === 'none';
+  wrap.style.display = opening ? 'block' : 'none';
+  if (btn) btn.textContent = opening ? 'اخفاء التقرير' : 'شوف تقرير اللعبة';
+  if (!opening || !currentRoomId) return;
+
+  const rolesList = document.getElementById('final-roles-list');
+  if (rolesList) {
+    const roles = (currentRoom && currentRoom.finalRoles) || [];
+    rolesList.innerHTML = roles.map(function(r) {
+      return '<div class="player-item" style="cursor:default;">'
+        + '<div><div class="player-name">' + escapeHtml(r.alias) + (r.isCapo ? ' <span style="color:var(--accent-red-bright);font-size:0.72rem;">(كابو)</span>' : '') + '</div>'
+        + '<div class="player-alias">' + escapeHtml(r.characterName || '') + '</div></div>'
+        + '</div>';
+    }).join('') || '<div class="empty-note">لا يوجد بيانات</div>';
+  }
+
+  const historyList = document.getElementById('vote-history-list');
+  if (historyList) {
+    historyList.innerHTML = '<div class="spinner"></div>';
+    try {
+      const snap = await db.collection('rooms').doc(currentRoomId).collection('voteHistory').orderBy('round').get();
+      if (snap.empty) { historyList.innerHTML = '<div class="empty-note">لا يوجد تصويتات مسجلة</div>'; return; }
+      historyList.innerHTML = snap.docs.map(function(d) {
+        const h = d.data();
+        const votesHtml = (h.votes || []).map(function(v) {
+          return '<div class="chat-msg-time">' + escapeHtml(v.voterAlias) + ' → ' + escapeHtml(v.targetAlias) + '</div>';
+        }).join('');
+        const headline = h.tie ? ('جولة ' + h.round + ' - تعادل (محدش خرج)') : ('جولة ' + h.round + ' - خرج: ' + escapeHtml(h.eliminatedAlias || ''));
+        return '<div class="clue-card" style="margin-bottom:10px;"><div class="clue-card-head"><div class="clue-title">' + headline + '</div></div><div class="clue-body">' + votesHtml + '</div></div>';
+      }).join('');
+    } catch (e) { historyList.innerHTML = '<div class="empty-note">تعذر تحميل التقرير</div>'; }
+  }
+}
+window.toggleGameReport = toggleGameReport;
 
 // يطلّع اللاعب برا الغرفة تمامًا عشان يختار لعبة تانية من الاول (مش نفس قائمة العاب الغرفة دي)
 function playDifferentGame() {
@@ -2071,10 +2288,34 @@ function playDifferentGame() {
 }
 window.playDifferentGame = playDifferentGame;
 
+// بيبعت "الكلمة الأخيرة" للاعب اللي اتقصى للشات، وبعدين يدخله وضع المشاهدة
+async function sendLastWords() {
+  const input = document.getElementById('last-words-input');
+  const text = input ? input.value.trim() : '';
+  if (text && currentRoomId && currentUser) {
+    try {
+      await db.collection('rooms').doc(currentRoomId).collection('chat').add({
+        uid: currentUser.uid,
+        alias: (currentUserData && currentUserData.alias) || 'PLAYER',
+        text: text,
+        type: 'lastwords',
+        time: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {}
+  }
+  if (input) input.value = '';
+  goSpectator();
+}
+window.sendLastWords = sendLastWords;
+
 function goSpectator() {
   isSpectator = true;
   document.getElementById('eliminated-overlay').classList.remove('show');
   document.getElementById('spectator-bar').classList.add('show');
+  const roomCodeBox = document.getElementById('room-code-box');
+  if (roomCodeBox) roomCodeBox.style.display = 'none';
+  const shareBtnWaiting = document.getElementById('btn-share-room-waiting');
+  if (shareBtnWaiting) shareBtnWaiting.style.display = 'none';
 }
 
 async function exitRoom() {
@@ -2096,6 +2337,7 @@ async function exitRoom() {
   currentRoomId = null;
   isEliminated = false;
   isSpectator = false;
+  isTrueSpectator = false;
   document.getElementById('bottom-nav').classList.add('visible');
   document.getElementById('eliminated-overlay').classList.remove('show');
   document.getElementById('spectator-bar').classList.remove('show');
@@ -2161,14 +2403,15 @@ function shareRoomLink() {
 
 // ===== NOTIFICATIONS =====
 async function loadNotifications() {
+  const container = document.getElementById('notifications-list');
+  const previewContainer = document.getElementById('home-notifs-preview');
   try {
+    // ملحوظة: شيلنا فلتر targetAll==true من هنا لأنه مع orderBy(time) محتاج composite index في Firestore،
+    // ولو الاندكس مش موجود الكويري كانت بتفشل بصمت والاشعارات ماكنتش بتظهر خالص من غير أي رسالة خطأ
     const snap = await db.collection('notifications')
-      .where('targetAll', '==', true)
       .orderBy('time', 'desc')
       .limit(20)
       .get();
-    const container = document.getElementById('notifications-list');
-    const previewContainer = document.getElementById('home-notifs-preview');
     container.innerHTML = '';
     previewContainer.innerHTML = '';
     let unread = false;
@@ -2187,7 +2430,11 @@ async function loadNotifications() {
       previewContainer.appendChild(items[i].cloneNode(true));
     }
     if (snap.size === 0) previewContainer.innerHTML = '<div style="padding:10px 0;color:var(--text-muted);font-size:0.8rem;">لا توجد اشعارات حديثة</div>';
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error(e);
+    if (container) container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.82rem;">تعذر تحميل الاشعارات - حاول تاني</div>';
+    if (previewContainer) previewContainer.innerHTML = '';
+  }
 }
 
 // ===== TOP PLAYERS / HALL OF FAME =====

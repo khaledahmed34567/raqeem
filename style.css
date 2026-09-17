@@ -1,27 +1,28 @@
 :root {
-  --bg-deep: #050508;
-  --bg-card: #0d0d14;
-  --bg-surface: #13131e;
-  --bg-overlay: #1a1a28;
-  --accent-gold: #c9a84c;
-  --accent-gold-dim: #8a6d28;
-  --accent-red: #8b1c1c;
-  --accent-red-bright: #c0392b;
-  --accent-smoke: #2a2a3e;
-  --text-primary: #e8e0d0;
-  --text-secondary: #9a9080;
-  --text-muted: #5a5060;
-  --border-subtle: #222230;
-  --border-accent: #3a3050;
+  --bg-deep: #08070a;
+  --bg-card: rgba(28,22,17,0.62);
+  --bg-surface: rgba(38,30,23,0.55);
+  --bg-overlay: rgba(48,38,28,0.62);
+  --accent-gold: #e5c87a;
+  --accent-gold-dim: #a3854f;
+  --accent-red: #7e2020;
+  --accent-red-bright: #a1292a;
+  --accent-smoke: #2e2722;
+  --text-primary: #f2e8d5;
+  --text-secondary: #b3a890;
+  --text-muted: #7a7060;
+  --border-subtle: rgba(229,200,122,0.14);
+  --border-accent: rgba(229,200,122,0.35);
   --success: #2d6a4f;
-  --danger: #8b1c1c;
+  --danger: #7e2020;
   --font-ar: 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
   --font-display: 'IBM Plex Sans', 'IBM Plex Sans Arabic', sans-serif;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow-card: 0 4px 24px rgba(0,0,0,0.6);
-  --shadow-glow: 0 0 30px rgba(201,168,76,0.15);
+  --shadow-glow: 0 0 30px rgba(229,200,122,0.18);
   --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+  --glass-blur: blur(16px) saturate(150%);
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -30,6 +31,7 @@ html, body { height:100%; overflow:hidden; }
 body {
   font-family: var(--font-ar);
   background: var(--bg-deep);
+  background-image: radial-gradient(ellipse at 20% 0%, rgba(126,32,32,0.12), transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(229,200,122,0.06), transparent 50%);
   color: var(--text-primary);
   user-select: none;
   -webkit-user-select: none;
@@ -1313,6 +1315,7 @@ img { pointer-events: none; -webkit-user-drag: none; }
   border-radius: 12px;
 }
 .status-active { background: rgba(45,106,79,0.3); color: #7ecba4; }
+.status-offline { background: rgba(122,112,96,0.25); color: var(--text-muted); }
 .status-eliminated { background: rgba(139,28,28,0.3); color: #e8a0a0; }
 .status-capo { background: rgba(201,168,76,0.2); color: var(--accent-gold); }
 
@@ -1809,6 +1812,7 @@ img { pointer-events: none; -webkit-user-drag: none; }
   justify-content: center;
   padding: 30px 20px;
   text-align: center;
+  overflow-y: auto;
 }
 .game-ended-screen.show { display: flex; }
 .game-result-icon {
@@ -2285,3 +2289,37 @@ img { pointer-events: none; -webkit-user-drag: none; }
   .splash-title { font-size: 2rem; }
   .game-card-img, .game-card-img-placeholder, .game-card::after { height: 160px; }
 }
+
+/* ===== GLASSMORPHISM (تأثيرات زجاجية - بلور خلفية على أهم الأسطح) ===== */
+.bottom-nav,
+.room-header,
+.profile-header,
+.profile-card,
+.game-card-face,
+#toast,
+.char-reveal-card,
+.clue-card,
+.game-report-wrap,
+.notif-header,
+.share-room-btn,
+.room-lock-toggle,
+.spectator-bar,
+.create-room-game-item,
+.top-player-row,
+.wallet-topup-section,
+#wallet-topup-section {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+.eliminated-overlay {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.eliminated-overlay { background: rgba(8,7,10,0.86); }
+.bottom-nav { border-top: 1px solid var(--border-accent); box-shadow: 0 -8px 30px rgba(0,0,0,0.35); }
+.room-header, .profile-header { border-bottom: 1px solid var(--border-accent); }
+.profile-card, .game-card-face, .char-reveal-card, .clue-card, .game-report-wrap {
+  border: 1px solid var(--border-subtle);
+  box-shadow: inset 0 1px 0 rgba(242,232,213,0.05), var(--shadow-card);
+}
+#toast { box-shadow: 0 8px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(242,232,213,0.06); }
