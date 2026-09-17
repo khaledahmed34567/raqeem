@@ -99,6 +99,8 @@ let presenceInterval = null;
 let presenceRefreshInterval = null;
 let lastNotifiedVoteEndsAtMs = null;
 let lastResultOutcome = null;
+let lastEliminationRevealKey = null;
+let eliminationRevealTimer = null;
 let ownReady = false;
 let lastPlayersArr = [];
 let votedRound = null;
@@ -215,6 +217,10 @@ function checkDeepLink() {
   if (gameId) {
     window._pendingGameId = gameId;
   }
+  const ref = params.get('ref');
+  if (ref) {
+    window._pendingReferralCode = ref;
+  }
 }
 checkDeepLink();
 
@@ -258,6 +264,8 @@ setTimeout(() => {
       document.getElementById('bottom-nav').classList.add('visible');
       loadGames();
       loadNotifications();
+      checkDailyStreak();
+      grantReferralRewardIfNeeded();
       if (window._pendingGameId) {
         const gid = window._pendingGameId;
         window._pendingGameId = null;
@@ -302,6 +310,8 @@ function updateProfileUI() {
   document.getElementById('pf-phone').textContent = currentUserData.phone || '-';
   const walletEl = document.getElementById('wallet-balance-amount');
   if (walletEl) walletEl.textContent = (currentUserData.walletBalance || 0) + ' جنيه';
+  const streakEl = document.getElementById('streak-count-display');
+  if (streakEl) streakEl.textContent = (currentUserData.loginStreak || 0) + ' يوم';
   const avatarImg = document.getElementById('profile-avatar-img');
   if (avatarImg) {
     if (currentUserData.avatarUrl) {
@@ -313,6 +323,88 @@ function updateProfileUI() {
     }
   }
 }
+
+// ===== DAILY LOGIN STREAK =====
+async function checkDailyStreak() {
+  if (!currentUser || !currentUserData) return;
+  try {
+    const now = new Date();
+    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    if (currentUserData.lastLoginDate === todayStr) return; // اتفحص النهاردة قبل كده
+
+    let newStreak = 1;
+    if (currentUserData.lastLoginDate) {
+      const lastD = new Date(currentUserData.lastLoginDate + 'T00:00:00');
+      const todayD = new Date(todayStr + 'T00:00:00');
+      const diffDays = Math.round((todayD - lastD) / 86400000);
+      newStreak = (diffDays === 1) ? ((currentUserData.loginStreak || 0) + 1) : 1;
+    }
+
+    const milestones = { 3: 5, 7: 15, 14: 30, 30: 75 };
+    const reward = milestones[newStreak] || 0;
+    const updateData = { lastLoginDate: todayStr, loginStreak: newStreak };
+    if (reward > 0) updateData.walletBalance = firebase.firestore.FieldValue.increment(reward);
+    await db.collection('users').doc(currentUser.uid).update(updateData);
+
+    currentUserData.lastLoginDate = todayStr;
+    currentUserData.loginStreak = newStreak;
+    if (reward > 0) {
+      currentUserData.walletBalance = (currentUserData.walletBalance || 0) + reward;
+      updateProfileUI();
+      showToast('مبروك! ' + newStreak + ' يوم دخول متتالي - خدت ' + reward + ' جنيه في محفظتك', 'success');
+    }
+  } catch (e) { console.error(e); }
+}
+window.checkDailyStreak = checkDailyStreak;
+
+// ===== REFERRAL / INVITE =====
+function getReferralLink() {
+  const code = (currentUserData && currentUserData.username) || '';
+  return window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(code);
+}
+function copyReferralLink() {
+  if (!currentUserData || !currentUserData.username) { showToast('اكمل بياناتك الأول', 'error'); return; }
+  navigator.clipboard.writeText(getReferralLink()).then(function() {
+    showToast('تم نسخ رابط الدعوة', 'success');
+  });
+}
+window.copyReferralLink = copyReferralLink;
+function shareReferralWhatsapp() {
+  if (!currentUserData || !currentUserData.username) { showToast('اكمل بياناتك الأول', 'error'); return; }
+  const text = 'يلا نلعب Capo مع بعض! سجل من اللينك ده وهتاخد رصيد هدية: ' + getReferralLink();
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+}
+window.shareReferralWhatsapp = shareReferralWhatsapp;
+
+// لما اللاعب المدعو يفعّل بريده، ناخد له وللي دعاه رصيد هدية - مرة واحدة بس لكل حساب
+async function grantReferralRewardIfNeeded() {
+  if (!currentUser || !currentUserData) return;
+  if (!currentUserData.referredBy || currentUserData.referralRewardGiven) return;
+  try {
+    const refSnap = await db.collection('users').where('username', '==', currentUserData.referredBy).limit(1).get();
+    if (refSnap.empty) {
+      await db.collection('users').doc(currentUser.uid).update({ referralRewardGiven: true });
+      currentUserData.referralRewardGiven = true;
+      return;
+    }
+    const referrerDoc = refSnap.docs[0];
+    const REWARD = 10;
+    const batch = db.batch();
+    batch.update(db.collection('users').doc(currentUser.uid), {
+      walletBalance: firebase.firestore.FieldValue.increment(REWARD),
+      referralRewardGiven: true
+    });
+    batch.update(referrerDoc.ref, {
+      walletBalance: firebase.firestore.FieldValue.increment(REWARD)
+    });
+    await batch.commit();
+    currentUserData.referralRewardGiven = true;
+    currentUserData.walletBalance = (currentUserData.walletBalance || 0) + REWARD;
+    updateProfileUI();
+    showToast('خدت ' + REWARD + ' جنيه هدية دعوة - صاحبك اللي دعاك خد نفس المبلغ', 'success');
+  } catch (e) { console.error(e); }
+}
+window.grantReferralRewardIfNeeded = grantReferralRewardIfNeeded;
 
 // ===== AVATAR UPLOAD =====
 // بنصغّر الصورة لحد 300x300 في المتصفح الاول قبل الرفع - يوفر وقت الرفع وحجم التخزين
@@ -420,11 +512,17 @@ async function doRegister() {
   try {
     const cred = await auth.createUserWithEmailAndPassword(email, pass);
     await cred.user.sendEmailVerification();
-    await db.collection('users').doc(cred.user.uid).set({
+    const newUserData = {
       firstName: fname, lastName: lname, alias: alias, email: email,
       phone: phone, username: username, uid: cred.user.uid,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), purchasedGames: []
-    });
+    };
+    // لو دخل بلينك دعوة صاحبه، نسجل مين دعاه عشان ناخد المكافأة بعد ما يفعّل بريده
+    if (window._pendingReferralCode && window._pendingReferralCode !== username) {
+      newUserData.referredBy = window._pendingReferralCode;
+      newUserData.referralRewardGiven = false;
+    }
+    await db.collection('users').doc(cred.user.uid).set(newUserData);
     document.getElementById('verify-notice').classList.add('show');
     showToast('تم انشاء الحساب - تحقق من بريدك', 'success');
   } catch (e) {
@@ -470,6 +568,8 @@ async function checkEmailVerified() {
       document.getElementById('bottom-nav').classList.add('visible');
       loadGames();
       loadNotifications();
+      checkDailyStreak();
+      grantReferralRewardIfNeeded();
     } else {
       showToast('لسه ماتفعلش - تحقق من بريدك وحاول تاني', 'error');
     }
@@ -1133,6 +1233,10 @@ function resetRoomFeatureState() {
   lastPlayersArr = [];
   votedRound = null;
   lastNotifiedVoteEndsAtMs = null;
+  lastEliminationRevealKey = null;
+  if (eliminationRevealTimer) { clearTimeout(eliminationRevealTimer); eliminationRevealTimer = null; }
+  const elimRevealEl = document.getElementById('elim-reveal-overlay');
+  if (elimRevealEl) elimRevealEl.classList.remove('show');
   clearInterval(caseStoryTimerId); caseStoryTimerId = null;
   clearInterval(clueSpotlightTimerId); clueSpotlightTimerId = null;
   clearInterval(voteCountdownInterval); voteCountdownInterval = null;
@@ -1495,6 +1599,15 @@ async function endRoundInRoom() {
       eliminatedAlias: eliminatedAlias,
       votes: voteRecords
     });
+    // بث فوري لكل اللاعبين: اللي خرج كان بريء ولا كابو - شاشة تظهر لمدة 10 ثواني للجميع
+    const eliminatedPlayerData = allPlayers.find(p => p.uid === eliminatedUid);
+    batch.update(roomRef, {
+      lastElimination: {
+        alias: eliminatedAlias,
+        isCapo: !!(eliminatedPlayerData && eliminatedPlayerData.isCapo),
+        key: Date.now()
+      }
+    });
 
     if (remainingCapos.length === 0) {
       // كل الكابوهات اتصيدوا - الأبرياء كسبوا
@@ -1598,6 +1711,26 @@ async function playNextGameInRoom() {
 }
 window.playNextGameInRoom = playNextGameInRoom;
 
+// بيعرض للجميع (مش بس اللي خرج) هل اللاعب اللي طلع كان بريء ولا كابو - لمدة 10 ثواني وبعدين يقفل لوحده
+function showEliminationReveal(info) {
+  const overlay = document.getElementById('elim-reveal-overlay');
+  if (!overlay) return;
+  document.getElementById('elim-reveal-alias').textContent = info.alias || 'لاعب';
+  const roleEl = document.getElementById('elim-reveal-role');
+  if (info.isCapo) {
+    roleEl.textContent = 'كان كابو!';
+    roleEl.style.color = 'var(--accent-red-bright)';
+  } else {
+    roleEl.textContent = 'كان بريء';
+    roleEl.style.color = '#7ecba4';
+  }
+  overlay.classList.add('show');
+  if (eliminationRevealTimer) clearTimeout(eliminationRevealTimer);
+  eliminationRevealTimer = setTimeout(function() {
+    overlay.classList.remove('show');
+  }, 10000);
+}
+
 function showCharacterReveal(p) {
   const overlay = document.getElementById('char-reveal-overlay');
   if (!overlay) return;
@@ -1640,8 +1773,18 @@ function requestNotifPermissionOnce() {
   } catch (e) {}
 }
 
-function setupRoomListeners() {
+async function setupRoomListeners() {
   clearRoomListeners();
+
+  // نجيب حالة الغرفة الحالية مرة واحدة الأول عشان لو فيه "آخر إقصاء" قديم من قبل ما ندخل، منعرضوش وكأنه لسه حصل دلوقتي
+  try {
+    const seedSnap = await db.collection('rooms').doc(currentRoomId).get();
+    if (seedSnap.exists) {
+      const d = seedSnap.data();
+      if (d.lastElimination && d.lastElimination.key) lastEliminationRevealKey = d.lastElimination.key;
+    }
+  } catch (e) {}
+  if (!currentRoomId) return; // ممكن يكون اتعمله exitRoom وإحنا لسه بنستنى الفيتش فوق
 
   // presence - نحدّث وقت آخر نشاط كل 20 ثانية عشان باقي اللاعبين يشوفوا مين متصل دلوقتي فعلاً
   if (!isTrueSpectator && currentUser) {
@@ -1841,6 +1984,12 @@ function updateRoomUI() {
   if (capoTabEl) {
     const showCapoTab = ownIsCapo && !isEliminated && !isTrueSpectator && (currentRoom.capoCount || 0) > 1;
     capoTabEl.style.display = showCapoTab ? '' : 'none';
+  }
+
+  // بث "اللي خرج كان بريء ولا كابو" - بيظهر لكل حد في الغرفة لمدة 10 ثواني أول ما يوصله
+  if (currentRoom.lastElimination && currentRoom.lastElimination.key && currentRoom.lastElimination.key !== lastEliminationRevealKey) {
+    lastEliminationRevealKey = currentRoom.lastElimination.key;
+    showEliminationReveal(currentRoom.lastElimination);
   }
 
   // check if capo was eliminated (game over early)
@@ -2367,6 +2516,12 @@ function showGameEnded() {
   if (reportBtn) reportBtn.style.display = (currentRoom && currentRoom.finalRoles) ? 'block' : 'none';
   if (reportWrap) reportWrap.style.display = 'none';
   if (reportBtn) reportBtn.textContent = 'شوف تقرير اللعبة';
+
+  const playAgainBtn = document.getElementById('btn-play-again');
+  if (playAgainBtn) {
+    const hasMoreGames = currentRoom && currentRoom.gameIds && currentRoom.gameIds.length > 1;
+    playAgainBtn.textContent = hasMoreGames ? 'اللعبة التالية' : 'العب مرة اخرى';
+  }
 }
 
 // ===== SHARE RESULT AS IMAGE =====
