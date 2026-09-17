@@ -287,7 +287,7 @@
 
       <button class="btn-primary" id="detail-wallet-pay-btn" style="display:none;margin-bottom:10px;align-items:center;justify-content:center;gap:8px;" onclick="payGameWithWallet()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M2 10h20"/><path d="M17 15h2"/></svg> ادفع من المحفظة</button>
 
-      <button class="btn-buy" id="detail-playnow-btn" style="background:linear-gradient(135deg,#2d6a4f,#1b4332);margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;" onclick="handlePlayNowClick()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="10" rx="4"/><path d="M7 10v4M5 12h4"/><circle cx="16" cy="10.5" r="1"/><circle cx="18.5" cy="13" r="1"/></svg> يلا نلعب - أنشئ غرفة لهذه اللعبة</button>
+      <button class="btn-buy" id="detail-playnow-btn" style="background:linear-gradient(135deg,var(--accent-red),var(--accent-red-bright));margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;" onclick="handlePlayNowClick()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="10" rx="4"/><path d="M7 10v4M5 12h4"/><circle cx="16" cy="10.5" r="1"/><circle cx="18.5" cy="13" r="1"/></svg> يلا نلعب - أنشئ غرفة لهذه اللعبة</button>
       <button class="btn-buy" id="detail-action-btn" onclick="handleGameAction()">العب الان</button>
       <div id="paypal-button-container"></div>
       <button class="share-room-btn" style="margin-top:12px;width:100%;justify-content:center;" onclick="shareGameLink()">
@@ -354,6 +354,16 @@
       </label>
       <div id="create-room-password-wrap" style="display:none;margin-bottom:14px;">
         <input class="field-input" id="create-room-password" type="password" placeholder="كلمة سر الغرفة" maxlength="30">
+      </div>
+      <div style="margin-bottom:14px;">
+        <div class="f-label" style="text-align:right;color:var(--text-muted);font-size:0.78rem;margin-bottom:6px;">مدة التصويت في كل جولة</div>
+        <select class="field-input" id="create-room-vote-duration">
+          <option value="120000">دقيقتين</option>
+          <option value="180000">3 دقايق</option>
+          <option value="300000" selected>5 دقايق</option>
+          <option value="420000">7 دقايق</option>
+          <option value="600000">10 دقايق</option>
+        </select>
       </div>
       <button class="btn-join" style="margin-top:14px;" onclick="createRoomByPlayer()">انشئ الغرفة</button>
     </div>
@@ -445,6 +455,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
         شارك رابط الغرفة مع اصدقائك
       </button>
+      <button class="share-room-btn" id="btn-share-room-whatsapp" style="margin-top:8px;" onclick="shareRoomWhatsapp()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.28-1.39c1.44.79 3.06 1.2 4.71 1.2h.01c5.46 0 9.91-4.45 9.91-9.91C21.91 6.45 17.5 2 12.04 2zm5.8 14.01c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.6-2.9-1.25-4.79-4.17-4.94-4.36-.14-.2-1.18-1.57-1.18-3 0-1.42.75-2.12 1.01-2.41.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.82 2.01.89 2.16.07.15.12.32.02.52-.09.19-.14.31-.28.48-.14.17-.29.37-.42.5-.14.14-.28.29-.12.56.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.61-.07.16-.19.7-.82.89-1.1.19-.28.37-.23.63-.14.26.09 1.64.78 1.92.92.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg>
+        دعوة مباشرة عبر واتساب
+      </button>
       <button class="btn-join" id="btn-start-game" style="display:none;margin-top:14px;" onclick="startGameInRoom()">يلا نلعب</button>
     </div>
 
@@ -464,6 +478,10 @@
           التصويت
           <div class="tab-badge" id="vote-badge"></div>
         </div>
+        <div class="room-tab" id="room-tab-capo" onclick="switchRoomTab('capo',this)" style="display:none;color:var(--accent-red-bright);">
+          سر الكابوهات
+          <div class="tab-badge" id="capo-chat-badge"></div>
+        </div>
       </div>
 
       <!-- CHAT -->
@@ -472,6 +490,20 @@
         <div class="chat-input-area">
           <input class="chat-input" id="chat-input" placeholder="اكتب رسالتك..." maxlength="300" onkeypress="if(event.key==='Enter')sendChat()">
           <button class="chat-send-btn" onclick="sendChat()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- SECRET CAPO CHAT (يظهر بس للكابوهات لو أكتر من واحد) -->
+      <div class="room-tab-content" id="tab-capo">
+        <div style="padding:10px 16px;color:var(--accent-red-bright);font-size:0.78rem;text-align:center;">
+          ده شات سري بينك وبين الكابو التاني بس - محدش تاني يشوفه. اتفقوا على قصتكم قبل التصويت
+        </div>
+        <div class="chat-messages" id="capo-chat-messages"></div>
+        <div class="chat-input-area">
+          <input class="chat-input" id="capo-chat-input" placeholder="اكتب لشريكك..." maxlength="300" onkeypress="if(event.key==='Enter')sendCapoChat()">
+          <button class="chat-send-btn" onclick="sendCapoChat()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -514,6 +546,7 @@
       <img id="result-mascot" src="" alt="" style="display:none;width:90px;height:90px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-red);margin-bottom:14px;box-shadow:0 0 20px rgba(139,28,28,0.4);">
       <div class="result-title" id="result-title"></div>
       <div class="result-sub" id="result-sub"></div>
+      <button class="btn-google" id="btn-share-result" style="margin-top:0;margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;" onclick="shareResultImage()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg> شارك النتيجة كصورة</button>
       <button class="btn-google" id="btn-toggle-report" style="margin-top:0;margin-bottom:10px;display:none;" onclick="toggleGameReport()">شوف تقرير اللعبة</button>
       <div class="game-report-wrap" id="game-report-wrap" style="display:none;width:100%;max-width:440px;text-align:right;margin-bottom:14px;">
         <div class="section-title">كشف الأدوار</div>
@@ -530,9 +563,13 @@
   <!-- PROFILE -->
   <div class="screen" id="screen-profile">
     <div class="profile-header">
-      <div class="profile-logo-wrapper">
-        <img class="profile-logo" src="https://i.ibb.co/NdHgx21b/logo.png" alt="" draggable="false" oncontextmenu="return false">
+      <div class="profile-logo-wrapper" onclick="document.getElementById('avatar-upload-input').click();" style="cursor:pointer;position:relative;">
+        <img class="profile-logo" id="profile-avatar-img" src="https://i.ibb.co/NdHgx21b/logo.png" alt="" draggable="false" oncontextmenu="return false">
+        <div class="avatar-edit-badge">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
       </div>
+      <input type="file" id="avatar-upload-input" accept="image/*" style="display:none;" onchange="uploadAvatarImage(this.files[0])">
       <div class="profile-alias" id="profile-alias-display"></div>
       <div class="profile-fullname" id="profile-name-display"></div>
     </div>
@@ -642,7 +679,7 @@
 <div class="modal-overlay" id="player-card-modal" onclick="closePlayerCard(event)">
   <div class="player-card-modal">
     <div class="player-card-header">
-      <img class="player-card-logo" src="https://i.ibb.co/NdHgx21b/logo.png" alt="" draggable="false" oncontextmenu="return false">
+      <img class="player-card-logo" id="player-card-avatar-img" src="https://i.ibb.co/NdHgx21b/logo.png" alt="" draggable="false" oncontextmenu="return false">
       <div class="player-card-alias" id="modal-alias"></div>
       <div class="player-card-name" id="modal-name"></div>
     </div>
@@ -700,6 +737,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
 <script src="app.js"></script>
 
