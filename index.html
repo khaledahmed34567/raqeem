@@ -459,11 +459,23 @@
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.28-1.39c1.44.79 3.06 1.2 4.71 1.2h.01c5.46 0 9.91-4.45 9.91-9.91C21.91 6.45 17.5 2 12.04 2zm5.8 14.01c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.6-2.9-1.25-4.79-4.17-4.94-4.36-.14-.2-1.18-1.57-1.18-3 0-1.42.75-2.12 1.01-2.41.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.82 2.01.89 2.16.07.15.12.32.02.52-.09.19-.14.31-.28.48-.14.17-.29.37-.42.5-.14.14-.28.29-.12.56.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.61-.07.16-.19.7-.82.89-1.1.19-.28.37-.23.63-.14.26.09 1.64.78 1.92.92.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg>
         دعوة مباشرة عبر واتساب
       </button>
-      <button class="btn-join" id="btn-start-game" style="display:none;margin-top:14px;" onclick="startGameInRoom()">يلا نلعب</button>
+      <button class="btn-join" id="btn-start-game" style="display:none;margin-top:14px;" onclick="initiateGameCountdown()">يلا نلعب</button>
+    </div>
+
+    <!-- 3-2-1 countdown قبل بداية اللعبة فعليًا - بيظهر لكل اللاعبين في نفس اللحظة -->
+    <div class="eliminated-overlay" id="game-countdown-overlay">
+      <div style="font-size:5rem;font-weight:800;color:var(--accent-gold);font-family:var(--font-display);" id="game-countdown-number">3</div>
+      <div class="eliminated-sub">استعدوا... اللعبة هتبدأ</div>
     </div>
 
     <!-- active game -->
     <div id="active-game-area" style="display:none;flex-direction:column;flex:1;">
+      <div class="global-vote-timer-bar" id="global-vote-timer-bar" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span id="global-vote-timer-text">--:--</span>
+        <span class="global-vote-timer-label">وقت التصويت</span>
+      </div>
+      <div class="round-history-strip" id="round-history-strip" style="display:none;"></div>
       <div class="room-tabs">
         <div class="room-tab active" onclick="switchRoomTab('chat',this)">
           الشات
@@ -487,11 +499,24 @@
       <!-- CHAT -->
       <div class="room-tab-content active" id="tab-chat">
         <div class="chat-messages" id="chat-messages"></div>
+        <button class="share-room-btn" id="btn-open-accuse" style="width:100%;justify-content:center;margin-bottom:8px;color:var(--accent-red-bright);border-color:var(--accent-red);" onclick="openAccuseModal()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          اتهم حد علنًا
+        </button>
         <div class="chat-input-area">
           <input class="chat-input" id="chat-input" placeholder="اكتب رسالتك..." maxlength="300" onkeypress="if(event.key==='Enter')sendChat()">
           <button class="chat-send-btn" onclick="sendChat()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
+        </div>
+      </div>
+
+      <!-- ACCUSE MODAL -->
+      <div class="modal-overlay" id="accuse-modal" onclick="if(event.target===this)closeAccuseModal()">
+        <div class="player-card-modal" style="max-width:340px;text-align:center;padding:20px;">
+          <div class="player-card-alias" style="color:var(--accent-red-bright);">مين اللي هتتهمه؟</div>
+          <div id="accuse-candidates-list" style="margin-top:14px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;"></div>
+          <button class="btn-google" style="margin-top:14px;" onclick="closeAccuseModal()">إلغاء</button>
         </div>
       </div>
 
@@ -703,6 +728,7 @@
     </div>
     <div class="player-card-body">
       <div class="player-card-bio" id="modal-bio"></div>
+      <button class="btn-google" id="btn-report-player" style="margin-bottom:8px;display:none;color:var(--accent-red-bright);border-color:var(--accent-red);" onclick="reportCurrentModalPlayer()">بلّغ عن سلوك مسيء</button>
       <button class="btn-close-modal" onclick="closePlayerCard()">اغلاق</button>
     </div>
   </div>

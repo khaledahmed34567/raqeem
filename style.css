@@ -1050,6 +1050,21 @@ img { pointer-events: none; -webkit-user-drag: none; }
   color: var(--text-muted);
   font-style: italic;
 }
+.chat-msg.last-words {
+  align-self: center;
+  max-width: 90%;
+  background: linear-gradient(135deg, rgba(126,32,32,0.18), rgba(126,32,32,0.06));
+  border: 1px solid var(--accent-red);
+}
+.chat-msg.last-words .chat-msg-sender { color: var(--accent-red-bright); }
+.chat-msg.accusation {
+  align-self: center;
+  max-width: 92%;
+  background: linear-gradient(135deg, rgba(229,200,122,0.16), rgba(229,200,122,0.05));
+  border: 1px solid var(--accent-gold-dim);
+  text-align: center;
+}
+.chat-msg.accusation .chat-msg-sender { color: var(--accent-gold); }
 .chat-msg-sender {
   font-size: 0.7rem;
   color: var(--accent-gold-dim);
@@ -1426,6 +1441,53 @@ img { pointer-events: none; -webkit-user-drag: none; }
   text-align: center;
   letter-spacing: 6px;
 }
+
+.global-vote-timer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(126,32,32,0.25), rgba(126,32,32,0.1));
+  border-bottom: 1px solid var(--border-accent);
+  color: var(--accent-red-bright);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+#global-vote-timer-text {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  min-width: 54px;
+  text-align: center;
+}
+.global-vote-timer-label { font-size: 0.78rem; color: var(--text-secondary); }
+.global-vote-timer-bar.urgent { animation: voteUrgentPulse 0.8s ease-in-out infinite; }
+
+.round-history-strip {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+.round-history-item {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  min-width: 62px;
+}
+.round-history-item .rh-round { font-size: 0.66rem; color: var(--text-muted); }
+.round-history-item .rh-name { font-size: 0.74rem; color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+.round-history-item.rh-tie .rh-name { color: var(--text-muted); }
 
 .vote-candidates { display: flex; flex-direction: column; gap: 8px; }
 .vote-candidate {

@@ -101,6 +101,10 @@ let lastNotifiedVoteEndsAtMs = null;
 let lastResultOutcome = null;
 let lastEliminationRevealKey = null;
 let eliminationRevealTimer = null;
+let gameCountdownActiveFor = null;
+let gameCountdownTimer = null;
+let currentModalPlayerUid = null;
+let currentModalPlayerAlias = null;
 let ownReady = false;
 let lastPlayersArr = [];
 let votedRound = null;
@@ -1237,6 +1241,10 @@ function resetRoomFeatureState() {
   if (eliminationRevealTimer) { clearTimeout(eliminationRevealTimer); eliminationRevealTimer = null; }
   const elimRevealEl = document.getElementById('elim-reveal-overlay');
   if (elimRevealEl) elimRevealEl.classList.remove('show');
+  gameCountdownActiveFor = null;
+  clearInterval(gameCountdownTimer); gameCountdownTimer = null;
+  const countdownEl = document.getElementById('game-countdown-overlay');
+  if (countdownEl) countdownEl.classList.remove('show');
   clearInterval(caseStoryTimerId); caseStoryTimerId = null;
   clearInterval(clueSpotlightTimerId); clueSpotlightTimerId = null;
   clearInterval(voteCountdownInterval); voteCountdownInterval = null;
@@ -1457,6 +1465,54 @@ async function enterSpectateRoom(roomId) {
 window.enterSpectateRoom = enterSpectateRoom;
 
 // ===== ROUND / CHARACTER LOGIC (owner-driven) =====
+// بيبدأ عد تنازلي 3-2-1 مشترك للجميع قبل ما اللعبة الفعلية تبدأ
+async function initiateGameCountdown() {
+  if (!currentRoom || !currentRoomId) return;
+  if (currentRoom.ownerUid !== currentUser.uid) { showToast('صاحب الغرفة بس يقدر يبدأ اللعبة'); return; }
+  try {
+    await db.collection('rooms').doc(currentRoomId).update({
+      gameCountdownEndsAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 3300))
+    });
+  } catch (e) { showToast('تعذر بدء اللعبة'); }
+}
+window.initiateGameCountdown = initiateGameCountdown;
+
+// بيتابع مؤقت العد التنازلي المشترك ويعرضه لكل حد؛ صاحب الغرفة بس اللي بيشغّل اللعبة فعليًا لما يخلص
+function checkGameCountdown() {
+  const overlay = document.getElementById('game-countdown-overlay');
+  const numEl = document.getElementById('game-countdown-number');
+  if (!overlay || !numEl) return;
+  const endsAt = currentRoom.gameCountdownEndsAt;
+  if (!endsAt) {
+    if (gameCountdownActiveFor !== null) {
+      gameCountdownActiveFor = null;
+      clearInterval(gameCountdownTimer);
+      overlay.classList.remove('show');
+    }
+    return;
+  }
+  const endsAtMs = endsAt.toMillis ? endsAt.toMillis() : endsAt;
+  if (gameCountdownActiveFor === endsAtMs) return; // العداد ده شغال أصلاً
+  gameCountdownActiveFor = endsAtMs;
+  overlay.classList.add('show');
+  clearInterval(gameCountdownTimer);
+  function tick() {
+    const remain = Math.ceil((endsAtMs - Date.now()) / 1000);
+    if (remain <= 0) {
+      clearInterval(gameCountdownTimer);
+      overlay.classList.remove('show');
+      gameCountdownActiveFor = null;
+      if (currentRoom && currentRoom.ownerUid === currentUser.uid && currentRoom.status === 'waiting') {
+        startGameInRoom();
+      }
+      return;
+    }
+    numEl.textContent = remain;
+  }
+  tick();
+  gameCountdownTimer = setInterval(tick, 200);
+}
+
 async function startGameInRoom() {
   if (!currentRoom || !currentRoomId) return;
   if (currentRoom.ownerUid !== currentUser.uid) { showToast('صاحب الغرفة بس يقدر يبدأ اللعبة'); return; }
@@ -1507,6 +1563,7 @@ async function startGameInRoom() {
       capoEliminated: false,
       capoWon: false,
       capoCount: capoCount,
+      gameCountdownEndsAt: firebase.firestore.FieldValue.delete(),
       totalRounds: game.rounds || 5,
       gameName: game.name || '',
       caseStory: game.caseStory || '',
@@ -1682,6 +1739,8 @@ async function playNextGameInRoom() {
     const gameDoc = await db.collection('games').doc(nextGameId).get();
     const game = gameDoc.exists ? gameDoc.data() : {};
     const playersSnap = await db.collection('rooms').doc(currentRoomId).collection('players').get();
+    // بنشيل تقرير الجولات بتاع اللعبة اللي خلصت عشان ملتخبطش مع أرقام جولات اللعبة الجديدة
+    const oldVoteHistSnap = await db.collection('rooms').doc(currentRoomId).collection('voteHistory').get();
     // نحاول نسيب نفس عدد اللاعبين الحالي لو مناسب للعبة الجديدة، وإلا نرجع لأول عدد مسموح بيها
     const validCounts = (game.playerCounts && game.playerCounts.length) ? game.playerCounts : null;
     let nextMaxPlayers = validCounts ? validCounts[0] : null;
@@ -1690,6 +1749,7 @@ async function playNextGameInRoom() {
     playersSnap.forEach(d => {
       batch.delete(d.ref.collection('private').doc('char'));
     });
+    oldVoteHistSnap.forEach(d => batch.delete(d.ref));
     batch.update(db.collection('rooms').doc(currentRoomId), {
       currentGameIndex: nextIndex,
       currentGameId: nextGameId,
@@ -1840,6 +1900,13 @@ async function setupRoomListeners() {
   }, function() { /* لو مش كابو، Firestore Rules هترفض القراءة - نتجاهل بهدوء */ });
   roomListeners.push(unsub2b);
 
+  // جدول الجولات الحي - بيتحدث أول ما كل جولة تتحسم (مش بس في نهاية اللعبة)
+  const voteHistQ = db.collection('rooms').doc(currentRoomId).collection('voteHistory').orderBy('round', 'asc');
+  const unsub2c = voteHistQ.onSnapshot((snap) => {
+    renderRoundHistoryStrip(snap);
+  }, function() {});
+  roomListeners.push(unsub2c);
+
   // players
   const unsub3 = db.collection('rooms').doc(currentRoomId).collection('players').onSnapshot((snap) => {
     renderPlayers(snap);
@@ -1899,6 +1966,8 @@ function updateRoomUI() {
   const status = currentRoom.status;
   const round = currentRoom.currentRound || 0;
   const totalRounds = currentRoom.totalRounds || 5;
+
+  checkGameCountdown();
 
   // round indicator
   if (round > 0) {
@@ -2121,17 +2190,23 @@ function hideClueSpotlight() {
 // ===== VOTE COUNTDOWN =====
 function startVoteCountdown(voteEndsAtTs) {
   const el = document.getElementById('vote-timer');
+  const barEl = document.getElementById('global-vote-timer-bar');
+  const barText = document.getElementById('global-vote-timer-text');
   if (!el) return;
   if (!voteEndsAtTs) { stopVoteCountdown(); return; }
   const endsAtMs = voteEndsAtTs.toMillis ? voteEndsAtTs.toMillis() : voteEndsAtTs;
   clearInterval(voteCountdownInterval);
   el.style.display = 'block';
+  if (barEl) barEl.style.display = 'flex';
   function tick() {
     const remainSec = Math.max(0, Math.ceil((endsAtMs - Date.now()) / 1000));
     const mm = Math.floor(remainSec / 60);
     const ss = remainSec % 60;
-    el.textContent = mm + ':' + String(ss).padStart(2, '0');
+    const timeStr = mm + ':' + String(ss).padStart(2, '0');
+    el.textContent = timeStr;
     el.classList.toggle('urgent', remainSec > 0 && remainSec <= 15);
+    if (barText) barText.textContent = timeStr;
+    if (barEl) barEl.classList.toggle('urgent', remainSec > 0 && remainSec <= 15);
     if (remainSec <= 0) clearInterval(voteCountdownInterval);
   }
   tick();
@@ -2142,6 +2217,8 @@ function stopVoteCountdown() {
   voteCountdownInterval = null;
   const el = document.getElementById('vote-timer');
   if (el) el.style.display = 'none';
+  const barEl = document.getElementById('global-vote-timer-bar');
+  if (barEl) barEl.style.display = 'none';
 }
 
 // ===== READY-UP (waiting room feature) =====
@@ -2221,9 +2298,14 @@ function renderChatMsg(msg, container) {
   const isMe = msg.uid === currentUser.uid;
   const isSystem = msg.type === 'system';
   const isLastWords = msg.type === 'lastwords';
+  const isAccusation = msg.type === 'accusation';
   const div = document.createElement('div');
-  div.className = 'chat-msg' + (isSystem ? ' system' : isMe ? ' mine' : ' other') + (isLastWords ? ' last-words' : '');
-  if (!isSystem) {
+  div.className = 'chat-msg' + (isSystem ? ' system' : isMe ? ' mine' : ' other') + (isLastWords ? ' last-words' : '') + (isAccusation ? ' accusation' : '');
+  if (isAccusation) {
+    div.innerHTML = '<div class="chat-msg-sender">اتهام علني</div>'
+      + '<div>' + escapeHtml(msg.alias || '') + ' يتهم <strong>' + escapeHtml(msg.text || '') + '</strong> بإنه الكابو</div>'
+      + '<div class="chat-msg-time">' + formatTime(msg.time) + '</div>';
+  } else if (!isSystem) {
     div.innerHTML = '<div class="chat-msg-sender">' + (isLastWords ? 'الكلمة الأخيرة لـ ' : '') + (msg.alias || '') + '</div>'
       + '<div>' + escapeHtml(msg.text || '') + '</div>'
       + '<div class="chat-msg-time">' + formatTime(msg.time) + '</div>';
@@ -2234,6 +2316,22 @@ function renderChatMsg(msg, container) {
 }
 
 // شات سري بين الكابوهات بس - نفس فكرة الشات العادي، بس لمستند تاني، وبيتقفل لو اتقصيت
+// جدول الجولات الحي - شريط أفقي فوق التابات يعرض نتيجة كل جولة اتحسمت لحد دلوقتي
+function renderRoundHistoryStrip(snap) {
+  const strip = document.getElementById('round-history-strip');
+  if (!strip) return;
+  if (snap.empty) { strip.style.display = 'none'; strip.innerHTML = ''; return; }
+  strip.style.display = 'flex';
+  strip.innerHTML = snap.docs.map(function(d) {
+    const h = d.data();
+    if (h.tie) {
+      return '<div class="round-history-item rh-tie"><div class="rh-round">ج' + h.round + '</div><div class="rh-name">تعادل</div></div>';
+    }
+    return '<div class="round-history-item"><div class="rh-round">ج' + h.round + '</div><div class="rh-name">' + escapeHtml(h.eliminatedAlias || '') + '</div></div>';
+  }).join('');
+  strip.scrollLeft = strip.scrollWidth;
+}
+
 async function sendCapoChat() {
   if (isEliminated || isTrueSpectator || !ownIsCapo) return;
   if (!currentRoomId || !currentUser) return;
@@ -2255,6 +2353,86 @@ async function sendCapoChat() {
   }
 }
 window.sendCapoChat = sendCapoChat;
+
+// ===== REPORT / KICK VOTE (منفصل تمامًا عن تصويت الكابو) =====
+function reportCurrentModalPlayer() {
+  if (!currentModalPlayerUid) return;
+  const alias = currentModalPlayerAlias || 'اللاعب';
+  if (!confirm('تبلغ عن ' + alias + ' بسلوك مسيء؟ لو وصلت البلاغات لأغلب اللاعبين النشطين هيتطرد من الغرفة فورًا.')) return;
+  reportPlayer(currentModalPlayerUid, alias);
+  closePlayerCard();
+}
+window.reportCurrentModalPlayer = reportCurrentModalPlayer;
+
+async function reportPlayer(uid, alias) {
+  if (!currentRoomId || !currentUser || !uid || uid === currentUser.uid) return;
+  try {
+    const reportRef = db.collection('rooms').doc(currentRoomId).collection('reports').doc(uid);
+    const playerRef = db.collection('rooms').doc(currentRoomId).collection('players').doc(uid);
+    const activeCount = activePlayerCount();
+    const threshold = Math.max(3, Math.ceil(activeCount / 2));
+    let kicked = false;
+    let alreadyReported = false;
+    await db.runTransaction(async (tx) => {
+      const reportSnap = await tx.get(reportRef);
+      let reporters = reportSnap.exists ? (reportSnap.data().reporterUids || []) : [];
+      if (reporters.indexOf(currentUser.uid) !== -1) { alreadyReported = true; return; }
+      reporters = reporters.concat([currentUser.uid]);
+      if (reporters.length >= threshold) {
+        tx.delete(playerRef);
+        tx.delete(playerRef.collection('private').doc('char'));
+        tx.delete(reportRef);
+        kicked = true;
+      } else {
+        tx.set(reportRef, { reporterUids: reporters, targetAlias: alias });
+      }
+    });
+    if (alreadyReported) { showToast('انت بلّغت عن اللاعب ده قبل كده'); return; }
+    if (kicked) {
+      db.collection('rooms').doc(currentRoomId).collection('chat').add({
+        uid: 'system', alias: 'النظام',
+        text: 'تم طرد ' + alias + ' من الغرفة بعد بلاغات من أغلب اللاعبين النشطين',
+        type: 'system', time: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(function() {});
+      showToast('وصل العدد المطلوب من البلاغات - تم طرد اللاعب', 'success');
+    } else {
+      showToast('تم إرسال بلاغك');
+    }
+  } catch (e) { console.error(e); showToast('تعذر إرسال البلاغ', 'error'); }
+}
+window.reportPlayer = reportPlayer;
+
+// ===== PUBLIC ACCUSATION =====
+function openAccuseModal() {
+  if (isTrueSpectator) return;
+  const list = document.getElementById('accuse-candidates-list');
+  const eliminatedSet = (currentRoom && currentRoom.eliminatedPlayers) || [];
+  const candidates = lastPlayersArr.filter(p => p.uid !== currentUser.uid && eliminatedSet.indexOf(p.uid) === -1);
+  if (!candidates.length) { showToast('مفيش لاعبين تانيين تتهمهم دلوقتي'); return; }
+  list.innerHTML = candidates.map(function(p) {
+    return '<button class="btn-coupon" onclick="sendAccusation(\'' + escapeHtml(p.alias || 'لاعب') + '\')">' + escapeHtml(p.alias || 'لاعب') + '</button>';
+  }).join('');
+  document.getElementById('accuse-modal').classList.add('show');
+}
+window.openAccuseModal = openAccuseModal;
+function closeAccuseModal() {
+  document.getElementById('accuse-modal').classList.remove('show');
+}
+window.closeAccuseModal = closeAccuseModal;
+async function sendAccusation(targetAlias) {
+  closeAccuseModal();
+  if (isEliminated || isTrueSpectator || !currentRoomId || !currentUser) return;
+  try {
+    await db.collection('rooms').doc(currentRoomId).collection('chat').add({
+      uid: currentUser.uid,
+      alias: (currentUserData && currentUserData.alias) || 'PLAYER',
+      text: targetAlias,
+      type: 'accusation',
+      time: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { showToast('تعذر إرسال الاتهام', 'error'); }
+}
+window.sendAccusation = sendAccusation;
 
 async function sendChat() {
   if (isEliminated && !isSpectator) return;
@@ -2768,6 +2946,8 @@ function switchRoomTab(id, el) {
 
 // ===== PLAYER CARD =====
 function openPlayerCard(uid, alias, name, bio, avatarUrl) {
+  currentModalPlayerUid = uid;
+  currentModalPlayerAlias = alias;
   document.getElementById('modal-alias').textContent = alias.toUpperCase();
   document.getElementById('modal-name').textContent = name;
   document.getElementById('modal-bio').textContent = bio || 'لا توجد نبذة';
@@ -2776,6 +2956,8 @@ function openPlayerCard(uid, alias, name, bio, avatarUrl) {
     if (avatarUrl) { img.src = avatarUrl; img.classList.add('is-photo'); }
     else { img.src = 'https://i.ibb.co/NdHgx21b/logo.png'; img.classList.remove('is-photo'); }
   }
+  const reportBtn = document.getElementById('btn-report-player');
+  if (reportBtn) reportBtn.style.display = (uid !== currentUser.uid && !isTrueSpectator) ? 'block' : 'none';
   document.getElementById('player-card-modal').classList.add('show');
 }
 function closePlayerCard(e) {
