@@ -258,6 +258,11 @@ setTimeout(() => {
         return;
       }
       currentUserData = snap.data();
+      if (currentUserData.banned) {
+        document.getElementById('banned-reason-text').textContent = currentUserData.banReason || 'تم حظر هذا الحساب من استخدام التطبيق';
+        showScreen('banned');
+        return;
+      }
       if (!user.emailVerified) {
         document.getElementById('verify-email-addr').textContent = user.email || '';
         showScreen('verify-email');

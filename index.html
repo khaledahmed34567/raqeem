@@ -195,6 +195,18 @@
     </div>
   </div>
 
+  <!-- BANNED (حظر دائم من التطبيق - حتى لو الحساب مسجل دخول ومفعّل بريده) -->
+  <div class="screen" id="screen-banned">
+    <div class="auth-header">
+      <img class="auth-logo" src="https://i.ibb.co/NdHgx21b/logo.png" alt="Capo" draggable="false" oncontextmenu="return false">
+      <div class="auth-title-main" style="color:var(--accent-red-bright);">عذرًا غير مسموح لك بالدخول</div>
+      <div class="auth-title-sub" id="banned-reason-text">تم حظر هذا الحساب من استخدام التطبيق</div>
+    </div>
+    <div class="auth-form active">
+      <button class="btn-google" onclick="doSignOut()">تسجيل الخروج</button>
+    </div>
+  </div>
+
   <!-- HOME -->
   <div class="screen" id="screen-home">
     <div class="home-header">
