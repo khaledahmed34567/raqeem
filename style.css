@@ -1,3 +1,25 @@
+/* ===== FONTS (خطوط العلامة الجديدة) ===== */
+@font-face {
+  font-family: 'CapoHeading';
+  src: url('https://files.catbox.moe/236lzl.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'CapoHeadingAlt';
+  src: url('https://files.catbox.moe/va4cz0.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'CapoBodyBold';
+  src: url('https://files.catbox.moe/uqr0yx.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'CapoInput';
+  src: url('https://files.catbox.moe/zhyu9p.otf') format('opentype');
+  font-display: swap;
+}
+
 :root {
   --bg-deep: #08070a;
   --bg-card: rgba(28,22,17,0.62);
@@ -15,8 +37,10 @@
   --border-accent: rgba(229,200,122,0.35);
   --success: #2d6a4f;
   --danger: #7e2020;
-  --font-ar: 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
-  --font-display: 'IBM Plex Sans', 'IBM Plex Sans Arabic', sans-serif;
+  --font-ar: 'CapoBodyBold', 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
+  --font-display: 'CapoHeading', 'CapoHeadingAlt', 'IBM Plex Sans', 'IBM Plex Sans Arabic', sans-serif;
+  --font-body-light: 'Thmanyah Serif Text', 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
+  --font-input: 'CapoInput', 'IBM Plex Sans Arabic', sans-serif;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow-card: 0 4px 24px rgba(0,0,0,0.6);
@@ -27,6 +51,8 @@
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html, body { height:100%; overflow:hidden; }
+
+input, textarea, select { font-family: var(--font-input); }
 
 body {
   font-family: var(--font-ar);
@@ -285,7 +311,7 @@ img { pointer-events: none; -webkit-user-drag: none; }
 .field-input::placeholder { color: var(--text-muted); }
 .field-input.error { border-color: var(--accent-red-bright); }
 
-.field-hint { font-size: 0.72rem; color: var(--text-muted); }
+.field-hint { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-body-light); font-weight: 300; }
 .field-error { font-size: 0.75rem; color: var(--accent-red-bright); display: none; }
 .field-error.show { display: block; }
 
@@ -828,6 +854,7 @@ img { pointer-events: none; -webkit-user-drag: none; }
   white-space: nowrap;
 }
 .btn-coupon:hover { background: rgba(201,168,76,0.1); }
+.btn-coupon.selected { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
 
 .btn-buy {
   width: 100%;
@@ -1076,7 +1103,43 @@ img { pointer-events: none; -webkit-user-drag: none; }
   color: var(--text-muted);
   margin-top: 3px;
   text-align: left;
+  font-family: var(--font-body-light);
+  font-weight: 300;
 }
+
+.reactions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  position: relative;
+}
+.reaction-chip {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 1.6;
+}
+.reaction-chip.mine { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(229,200,122,0.1); }
+.reaction-chip.reaction-add { padding: 2px 7px; opacity: 0.6; }
+.reaction-picker {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  display: flex;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 20px;
+  padding: 6px 10px;
+  z-index: 20;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.reaction-picker span { cursor: pointer; font-size: 1.1rem; }
 
 .chat-input-area {
   padding: 10px 12px 12px;
@@ -1796,7 +1859,7 @@ img { pointer-events: none; -webkit-user-drag: none; }
 }
 .notif-dot.read { background: var(--text-muted); }
 .notif-text { font-size: 0.83rem; color: var(--text-secondary); line-height: 1.5; }
-.notif-time { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; }
+.notif-time { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; font-family: var(--font-body-light); font-weight: 300; }
 
 /* ===== TOAST ===== */
 #toast {
@@ -1913,7 +1976,7 @@ img { pointer-events: none; -webkit-user-drag: none; }
   letter-spacing: 4px;
   margin-bottom: 8px;
 }
-.result-sub { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 24px; }
+.result-sub { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 24px; font-family: var(--font-body-light); font-weight: 300; }
 .result-title.lose-shake { animation: resultShake 0.5s ease-in-out 1; }
 @keyframes resultShake {
   0%, 100% { transform: translateX(0); }

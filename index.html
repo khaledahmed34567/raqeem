@@ -12,10 +12,11 @@
 <link rel="apple-touch-icon" href="https://i.ibb.co/cX7FVw1b/icon.png">
 <title>Capo - لعبة التحقيق</title>
 
-<!-- Fonts: IBM Plex family only (Arabic + Latin) -->
+<!-- Fonts: IBM Plex family (Arabic + Latin) + Thmanyah Serif Text (مرخّص للاستخدام التجاري) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@dawod/thmanyah-font-web/serif-text.css">
 
 <link rel="stylesheet" href="style.css">
 </head>
@@ -569,6 +570,7 @@
           <div class="vote-timer" id="vote-timer" style="display:none;"></div>
           <div class="vote-candidates" id="vote-candidates"></div>
           <button class="btn-vote" id="btn-submit-vote" onclick="submitVote()" disabled>ارسل تصويتك</button>
+          <button class="btn-google" id="btn-pause-vote" style="display:none;margin-top:10px;" onclick="togglePauseVote()">إيقاف الوقت مؤقتًا</button>
           <button class="btn-join" id="btn-end-round-owner" style="display:none;margin-top:10px;" onclick="endRoundInRoom()">أنهِ الجولة</button>
         </div>
       </div>
@@ -591,6 +593,18 @@
         <div class="section-title">تقرير التصويت لكل جولة</div>
         <div id="vote-history-list"></div>
       </div>
+      <div class="game-report-wrap" id="post-game-rating-wrap" style="display:none;width:100%;max-width:440px;text-align:right;margin-bottom:14px;">
+        <div class="section-title">قيّم زمايلك في اللعبة</div>
+        <div id="rating-picker-detective" style="margin-bottom:6px;color:var(--text-secondary);font-size:0.82rem;">مين كان أفضل محقق؟</div>
+        <div id="rating-candidates-detective" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
+        <div style="margin-bottom:6px;color:var(--text-secondary);font-size:0.82rem;">مين أقنعك أكتر بكلامه؟</div>
+        <div id="rating-candidates-convincing" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
+        <div id="rating-results" style="display:none;margin-top:6px;">
+          <div class="section-title">نتيجة التقييم</div>
+          <div id="rating-results-body"></div>
+        </div>
+      </div>
+      <button class="btn-google" id="btn-toggle-rating" style="margin-top:0;margin-bottom:10px;display:none;" onclick="toggleRatingPanel()">قيّم زمايلك</button>
       <button class="btn-primary" id="btn-play-again" style="width:auto;padding:13px 30px;margin-bottom:10px;" onclick="playAgain()">العب مرة اخرى</button>
       <button class="btn-google" style="margin-top:0;margin-bottom:10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;" onclick="playDifferentGame()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg> جرب لعبة تانية</button>
       <button class="btn-google" style="margin-top:0;" onclick="exitRoom()">الخروج من الغرفة</button>
@@ -642,6 +656,10 @@
             <button class="btn-coupon" onclick="initWalletTopup()">تأكيد</button>
           </div>
           <div id="wallet-paypal-container" style="margin-top:10px;"></div>
+          <div class="coupon-row stacked" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);">
+            <input class="coupon-input" id="wallet-coupon-input" placeholder="عندك كود شحن رصيد؟" style="direction:ltr;text-align:center;">
+            <button class="btn-coupon" onclick="applyWalletCoupon()">فعّل كود الشحن</button>
+          </div>
         </div>
       </div>
 
