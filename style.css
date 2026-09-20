@@ -2465,3 +2465,50 @@ img { pointer-events: none; -webkit-user-drag: none; }
   box-shadow: inset 0 1px 0 rgba(242,232,213,0.05), var(--shadow-card);
 }
 #toast { box-shadow: 0 8px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(242,232,213,0.06); }
+
+/* ===== INTERACTIVE STORIES (قصص تفاعلية) ===== */
+.story-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.story-card:active { transform: scale(0.98); }
+.story-card-title { font-family: var(--font-display); font-size: 1.05rem; color: var(--accent-gold); margin-bottom: 6px; }
+.story-card-desc { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px; }
+.story-card-meta { display: flex; gap: 10px; font-size: 0.72rem; color: var(--text-muted); }
+.story-scene-text {
+  font-size: 1.02rem;
+  line-height: 2;
+  color: var(--text-primary);
+  padding-top: 20px;
+  white-space: pre-wrap;
+}
+.story-choice-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  color: var(--text-primary);
+  font-family: var(--font-ar);
+  font-size: 0.92rem;
+  text-align: right;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+.story-choice-btn:hover { border-color: var(--accent-gold); background: rgba(229,200,122,0.08); }
+.story-choice-btn .choice-votes {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: var(--accent-gold);
+  background: var(--bg-overlay);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+.story-choice-btn.voted { border-color: var(--accent-gold); background: rgba(229,200,122,0.14); }

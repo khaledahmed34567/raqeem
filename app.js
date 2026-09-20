@@ -775,6 +775,275 @@ function buildStaticStars(avg) {
 }
 const DIFFICULTY_MAP = { easy: ['سهل', 'diff-easy'], medium: ['متوسط', 'diff-medium'], hard: ['صعب', 'diff-hard'] };
 
+let allGamesCache = [];
+let allGamesActiveCategory = 'الكل';
+async function loadAllGamesPage() {
+  const grid = document.getElementById('all-games-grid');
+  grid.innerHTML = '<div class="spinner"></div>';
+  try {
+    if (!allGamesCache.length) {
+      const snap = await db.collection('games').get();
+      allGamesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+    const categories = ['الكل'].concat(Array.from(new Set(allGamesCache.map(g => g.category).filter(Boolean))));
+    const catsEl = document.getElementById('all-games-categories');
+    catsEl.innerHTML = categories.map(function(c) {
+      return '<button class="btn-coupon" style="white-space:nowrap;flex-shrink:0;' + (c === allGamesActiveCategory ? '' : '') + '" onclick="filterAllGames(\'' + escapeHtml(c) + '\', this)">' + escapeHtml(c) + '</button>';
+    }).join('');
+    Array.from(catsEl.children).forEach(function(btn) {
+      btn.classList.toggle('selected', btn.textContent === allGamesActiveCategory);
+    });
+    renderAllGamesGrid();
+  } catch (e) {
+    grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">تعذر تحميل الالعاب</div>';
+  }
+}
+window.loadAllGamesPage = loadAllGamesPage;
+
+// ===== INTERACTIVE STORIES (قصص تفاعلية - غرفة هروب/قصة متفرعة، مفيش كابو ولا تصويت اتهام) =====
+let storiesCache = [];
+let currentStory = null;
+let currentSceneId = null;
+let storySoloHistory = [];
+let storyRoomId = null;      // لو اللعب جماعي
+let storyRoomListeners = [];
+
+async function loadStoriesCatalog() {
+  const grid = document.getElementById('stories-grid');
+  grid.innerHTML = '<div class="spinner"></div>';
+  try {
+    const snap = await db.collection('interactiveStories').get();
+    storiesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!storiesCache.length) {
+      grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">لسه مفيش قصص تفاعلية متاحة</div>';
+      return;
+    }
+    grid.innerHTML = storiesCache.map(function(s) {
+      return '<div class="story-card">'
+        + '<div class="story-card-title">' + escapeHtml(s.name || '') + '</div>'
+        + '<div class="story-card-desc">' + escapeHtml(s.description || '') + '</div>'
+        + '<div class="story-card-meta"><span>' + ((s.scenes || []).length) + ' مشهد</span></div>'
+        + '<div style="display:flex;gap:8px;margin-top:12px;">'
+        + '<button class="btn-coupon" style="flex:1;" onclick="event.stopPropagation();startSoloStory(\'' + s.id + '\')">العب لوحدك</button>'
+        + '<button class="btn-coupon" style="flex:1;" onclick="event.stopPropagation();createGroupStoryRoom(\'' + s.id + '\')">العب مع أصحابك</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  } catch (e) {
+    grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">تعذر تحميل القصص</div>';
+  }
+}
+window.loadStoriesCatalog = loadStoriesCatalog;
+
+// ----- SOLO MODE -----
+function startSoloStory(storyId) {
+  const story = storiesCache.find(s => s.id === storyId);
+  if (!story || !story.scenes || !story.scenes.length) { showToast('القصة دي لسه مش جاهزة', 'error'); return; }
+  currentStory = story;
+  storyRoomId = null;
+  storySoloHistory = [];
+  currentSceneId = story.startId || story.scenes[0].id;
+  document.getElementById('story-group-bar').style.display = 'none';
+  navigateTo('story-player');
+  renderStoryScene();
+}
+window.startSoloStory = startSoloStory;
+
+function findScene(story, sceneId) {
+  return (story.scenes || []).find(sc => sc.id === sceneId);
+}
+
+function renderStoryScene() {
+  const scene = findScene(currentStory, currentSceneId);
+  const textEl = document.getElementById('story-scene-text');
+  const choicesEl = document.getElementById('story-choices');
+  const endingBox = document.getElementById('story-ending-box');
+  if (!scene) { textEl.textContent = 'حصل خطأ في القصة'; choicesEl.innerHTML = ''; return; }
+  textEl.textContent = scene.text || '';
+  if (scene.isEnding) {
+    choicesEl.innerHTML = '';
+    endingBox.style.display = 'block';
+    return;
+  }
+  endingBox.style.display = 'none';
+  const choices = scene.choices || [];
+  choicesEl.innerHTML = choices.map(function(c, i) {
+    return '<button class="story-choice-btn" onclick="pickStoryChoice(' + i + ')">' + escapeHtml(c.label || '') + '</button>';
+  }).join('');
+}
+
+function pickStoryChoice(index) {
+  if (storyRoomId) { voteStoryChoice(index); return; }
+  const scene = findScene(currentStory, currentSceneId);
+  const choice = scene.choices[index];
+  if (!choice) return;
+  storySoloHistory.push(currentSceneId);
+  currentSceneId = choice.target;
+  renderStoryScene();
+}
+window.pickStoryChoice = pickStoryChoice;
+
+function restartCurrentStory() {
+  if (!currentStory) return;
+  if (storyRoomId) { showToast('صاحب الغرفة بس يقدر يعيد القصة الجماعية'); return; }
+  currentSceneId = currentStory.startId || currentStory.scenes[0].id;
+  storySoloHistory = [];
+  renderStoryScene();
+}
+window.restartCurrentStory = restartCurrentStory;
+
+function exitStoryPlayer() {
+  clearStoryRoomListeners();
+  storyRoomId = null;
+  currentStory = null;
+  navigateTo('stories');
+}
+window.exitStoryPlayer = exitStoryPlayer;
+function clearStoryRoomListeners() {
+  storyRoomListeners.forEach(u => u());
+  storyRoomListeners = [];
+}
+
+// ----- GROUP MODE (غرفة قصة جماعية - قرار الأغلبية بيحرك القصة للجميع) -----
+async function createGroupStoryRoom(storyId) {
+  if (!currentUser || !currentUserData) { showToast('سجل الدخول الأول'); return; }
+  const story = storiesCache.find(s => s.id === storyId);
+  if (!story || !story.scenes || !story.scenes.length) { showToast('القصة دي لسه مش جاهزة', 'error'); return; }
+  try {
+    const roomRef = db.collection('storyRooms').doc();
+    const code = generatePlayerRoomCode();
+    await roomRef.set({
+      storyId: storyId,
+      storyName: story.name || '',
+      code: code,
+      ownerUid: currentUser.uid,
+      currentSceneId: story.startId || story.scenes[0].id,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await roomRef.collection('players').doc(currentUser.uid).set({
+      alias: currentUserData.alias || 'PLAYER'
+    });
+    enterGroupStoryRoom(roomRef.id, story);
+    showToast('كود الغرفة: ' + code, 'success');
+  } catch (e) { showToast('تعذر إنشاء الغرفة', 'error'); }
+}
+window.createGroupStoryRoom = createGroupStoryRoom;
+
+async function joinGroupStoryRoomByCode(code) {
+  if (!currentUser || !currentUserData) { showToast('سجل الدخول الأول'); return; }
+  try {
+    const snap = await db.collection('storyRooms').where('code', '==', code.toUpperCase()).limit(1).get();
+    if (snap.empty) { showToast('كود غير صحيح', 'error'); return; }
+    const roomDoc = snap.docs[0];
+    const room = roomDoc.data();
+    await roomDoc.ref.collection('players').doc(currentUser.uid).set({ alias: currentUserData.alias || 'PLAYER' });
+    let story = storiesCache.find(s => s.id === room.storyId);
+    if (!story) {
+      const sDoc = await db.collection('interactiveStories').doc(room.storyId).get();
+      story = { id: sDoc.id, ...sDoc.data() };
+    }
+    enterGroupStoryRoom(roomDoc.id, story);
+  } catch (e) { showToast('تعذر الانضمام', 'error'); }
+}
+window.joinGroupStoryRoomByCode = joinGroupStoryRoomByCode;
+
+let storyRoomOwnerUid = null;
+let storyRoomPlayerCount = 1;
+
+function enterGroupStoryRoom(roomId, story) {
+  currentStory = story;
+  storyRoomId = roomId;
+  navigateTo('story-player');
+  clearStoryRoomListeners();
+  const unsub = db.collection('storyRooms').doc(roomId).onSnapshot(function(snap) {
+    if (!snap.exists) { exitStoryPlayer(); return; }
+    const room = snap.data();
+    storyRoomOwnerUid = room.ownerUid;
+    currentSceneId = room.currentSceneId;
+    document.getElementById('story-group-bar').style.display = 'block';
+    document.getElementById('story-group-bar').textContent = 'قصة جماعية - كود الغرفة: ' + room.code + ' (بتتحرك لما الكل يصوّت)';
+    renderStoryScene();
+  });
+  storyRoomListeners.push(unsub);
+  const unsubPlayers = db.collection('storyRooms').doc(roomId).collection('players').onSnapshot(function(snap) {
+    storyRoomPlayerCount = Math.max(1, snap.size);
+  });
+  storyRoomListeners.push(unsubPlayers);
+  listenStoryVotes(roomId);
+}
+
+function listenStoryVotes(roomId) {
+  const unsub = db.collection('storyRooms').doc(roomId).collection('votes').onSnapshot(function(snap) {
+    const tally = {};
+    let myVote = null;
+    snap.forEach(function(d) {
+      const v = d.data().choiceIndex;
+      tally[v] = (tally[v] || 0) + 1;
+      if (d.id === currentUser.uid) myVote = v;
+    });
+    document.querySelectorAll('.story-choice-btn').forEach(function(btn, i) {
+      btn.classList.toggle('voted', myVote === i);
+      const existingBadge = btn.querySelector('.choice-votes');
+      if (existingBadge) existingBadge.remove();
+      if (tally[i]) {
+        const badge = document.createElement('span');
+        badge.className = 'choice-votes';
+        badge.textContent = tally[i];
+        btn.appendChild(badge);
+      }
+    });
+    // لما كل اللاعبين المتصلين يصوّتوا، صاحب الغرفة (وهو بس) بيحرك القصة تلقائيًا للأغلبية - يمنع أي تعارض بين الأجهزة
+    if (currentUser.uid === storyRoomOwnerUid && snap.size >= storyRoomPlayerCount && snap.size > 0) {
+      let topIndex = 0, topCount = -1;
+      Object.keys(tally).forEach(function(k) {
+        if (tally[k] > topCount) { topCount = tally[k]; topIndex = parseInt(k, 10); }
+      });
+      advanceGroupStory(topIndex);
+    }
+  });
+  storyRoomListeners.push(unsub);
+}
+
+async function voteStoryChoice(index) {
+  if (!storyRoomId || !currentUser) return;
+  try {
+    await db.collection('storyRooms').doc(storyRoomId).collection('votes').doc(currentUser.uid).set({ choiceIndex: index });
+    showToast('صوّتك اتسجل - في انتظار باقي اللاعبين');
+  } catch (e) { showToast('تعذر تسجيل التصويت', 'error'); }
+}
+
+async function advanceGroupStory(index) {
+  if (!storyRoomId || !currentStory) return;
+  const scene = findScene(currentStory, currentSceneId);
+  if (!scene || scene.isEnding) return;
+  const choice = scene.choices[index];
+  if (!choice) return;
+  try {
+    const votesSnap = await db.collection('storyRooms').doc(storyRoomId).collection('votes').get();
+    const batch = db.batch();
+    votesSnap.forEach(function(d) { batch.delete(d.ref); });
+    batch.update(db.collection('storyRooms').doc(storyRoomId), { currentSceneId: choice.target });
+    await batch.commit();
+  } catch (e) { /* ممكن كذا كلينت يحاولوا في نفس اللحظة - مش خطير */ }
+}
+window.advanceGroupStory = advanceGroupStory;
+
+function filterAllGames(category, btnEl) {
+  allGamesActiveCategory = category;
+  const catsEl = document.getElementById('all-games-categories');
+  Array.from(catsEl.children).forEach(function(btn) { btn.classList.remove('selected'); });
+  if (btnEl) btnEl.classList.add('selected');
+  renderAllGamesGrid();
+}
+window.filterAllGames = filterAllGames;
+
+function renderAllGamesGrid() {
+  const grid = document.getElementById('all-games-grid');
+  const filtered = allGamesActiveCategory === 'الكل' ? allGamesCache : allGamesCache.filter(g => g.category === allGamesActiveCategory);
+  if (!filtered.length) { grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">لا توجد العاب في القسم ده</div>'; return; }
+  grid.innerHTML = filtered.map(buildGameCard).join('');
+}
+
 function buildGameCard(g) {
   const isPaid = g.price && parseFloat(g.price) > 0;
   const badge = isPaid
