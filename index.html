@@ -225,7 +225,10 @@
       </div>
     </div>
 
-    <div class="section-title">الالعاب المتاحة</div>
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>الالعاب المتاحة</span>
+      <span style="color:var(--accent-gold);font-size:0.78rem;cursor:pointer;font-weight:400;" onclick="navigateTo('all-games');loadAllGamesPage();">شوف كل الالعاب</span>
+    </div>
     <div class="games-scroll" id="games-scroll">
       <div style="padding:20px;color:var(--text-muted);font-size:0.82rem;">
         <div class="spinner"></div>
@@ -238,10 +241,6 @@
         <input class="field-input" id="quick-code" type="text" placeholder="كود الغرفة" style="flex:1;letter-spacing:4px;text-align:center;font-family:var(--font-display);font-size:1.1rem;text-transform:uppercase;" maxlength="6">
         <button class="btn-join" style="width:auto;padding:12px 20px;margin-bottom:0;" onclick="quickJoin()">انضم</button>
       </div>
-      <button class="share-room-btn" style="margin-top:10px;" onclick="openCreateRoomScreen()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-        أنشئ غرفة جديدة
-      </button>
     </div>
 
     <div class="section-title">احدث الاشعارات</div>
@@ -336,8 +335,12 @@
       <div class="join-sub">ادخل الكود الذي ارسله لك صاحب الغرفة</div>
       <input class="code-input" id="join-code-input" placeholder="XXXXXX" maxlength="6" oninput="this.value=this.value.toUpperCase()">
       <button class="btn-join" onclick="joinRoom()">انضم الان</button>
+      <div class="share-hint">او انضم عبر رابط مشاركة الغرفة</div>
       <div class="divider share-divider">او</div>
-      <div class="share-hint">انضم عبر رابط مشاركة الغرفة</div>
+      <button class="share-room-btn" style="width:100%;justify-content:center;" onclick="openCreateRoomScreen()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        أنشئ غرفة جديدة
+      </button>
     </div>
     <div class="section-title" style="margin-top:18px;">غرف مباشرة الآن (للمشاهدة)</div>
     <div style="padding:0 16px 16px;" id="live-rooms-list"><div class="spinner"></div></div>
@@ -717,12 +720,50 @@
     <div id="top-players-list" style="padding:12px 16px 30px;"></div>
   </div>
 
+  <!-- ALL GAMES CATALOG -->
+  <div class="screen" id="screen-all-games">
+    <div class="back-btn" style="position:relative;top:auto;right:auto;margin-bottom:14px;align-self:flex-end;" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="notif-header-title" style="padding:0 16px 12px;">كل الالعاب</div>
+    <div id="all-games-categories" style="padding:0 16px 14px;display:flex;gap:8px;overflow-x:auto;"></div>
+    <div id="all-games-grid" style="padding:0 16px 30px;display:flex;flex-direction:column;gap:14px;"><div class="spinner"></div></div>
+  </div>
+
   <!-- NOTIFICATIONS -->
   <div class="screen" id="screen-notifications">
     <div class="notif-header" style="margin-bottom:10px;">
       <div class="notif-header-title">الاشعارات</div>
     </div>
     <div class="profile-card notif-list" id="notifications-list" style="margin:0 16px;"></div>
+  </div>
+
+  <!-- STORIES CATALOG -->
+  <div class="screen" id="screen-stories">
+    <div class="notif-header-title" style="padding:16px 16px 4px;">قصص تفاعلية</div>
+    <div style="padding:0 16px 14px;color:var(--text-muted);font-size:0.8rem;">مفيش كابو ولا تصويت اتهام - انت وقراراتك بس هي اللي بتحدد النهاية</div>
+    <div style="padding:0 16px 16px;display:flex;gap:8px;">
+      <input class="field-input" id="story-join-code" placeholder="كود قصة جماعية" style="flex:1;text-align:center;letter-spacing:3px;text-transform:uppercase;">
+      <button class="btn-join" style="width:auto;padding:12px 18px;margin-bottom:0;" onclick="joinGroupStoryRoomByCode(document.getElementById('story-join-code').value.trim())">انضم</button>
+    </div>
+    <div id="stories-grid" style="padding:0 16px 30px;display:flex;flex-direction:column;gap:14px;"><div class="spinner"></div></div>
+  </div>
+
+  <!-- STORY PLAYER (فردي أو جماعي) -->
+  <div class="screen" id="screen-story-player">
+    <div class="back-btn" style="position:relative;top:auto;right:auto;margin-bottom:10px;align-self:flex-end;" onclick="exitStoryPlayer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div id="story-group-bar" style="display:none;padding:0 16px 10px;text-align:center;color:var(--accent-gold);font-size:0.82rem;"></div>
+    <div style="flex:1;overflow-y:auto;padding:0 20px;display:flex;flex-direction:column;">
+      <div id="story-scene-text" class="story-scene-text"></div>
+      <div id="story-choices" style="display:flex;flex-direction:column;gap:10px;margin-top:20px;margin-bottom:20px;"></div>
+      <div id="story-ending-box" style="display:none;text-align:center;padding:20px 0;">
+        <div class="game-result-icon"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+        <button class="btn-primary" style="width:auto;padding:12px 28px;margin-top:14px;" onclick="restartCurrentStory()">العب تاني</button>
+        <button class="btn-google" style="margin-top:10px;" onclick="exitStoryPlayer()">رجوع للقصص</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -735,7 +776,11 @@
   </div>
   <div class="nav-item" id="nav-join" onclick="navigateTo('join');loadPublicRooms()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-    <span>انضم</span>
+    <span>الغرف</span>
+  </div>
+  <div class="nav-item" id="nav-stories" onclick="navigateTo('stories');loadStoriesCatalog()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 8h7M9 12h7"/></svg>
+    <span>قصص تفاعلية</span>
   </div>
   <div class="nav-item" id="nav-notifications" onclick="navigateTo('notifications')" style="position:relative;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
