@@ -150,7 +150,7 @@ window.openU=()=>{cl("dr");op("ovU");authView(me?(ok(prof)?"account":"complete")
 window.showAuth=m=>{cl("dr");op("ovU");authView(m)};
 window.authView=m=>{authM=m;const b=$("ub"),v=prof||gPre||{},
 tabs=`<div class="tb"><button class="btn${m=="login"?"":" g"}" onclick="authView('login')">${t("login")}</button><button class="btn${m=="signup"?"":" g"}" onclick="authView('signup')">${t("signup")}</button></div>`,
-gb=`<button class="btn gb" onclick="gLogin()">${t("g")}</button>`,fw='style="width:100%;margin-top:8px"';
+gb="",fw='style="width:100%;margin-top:8px"';
 if(m=="login")b.innerHTML=tabs+inp("le","email","email")+inp("lp","pw","password")+`<button class="btn" ${fw} onclick="doLogin()">${t("login")}</button><button class="lk" onclick="authView('forgot')">${t("fg")}</button>`+gb;
 else if(m=="signup")b.innerHTML=tabs+nf("u",{})+inp("uem","email","email")+inp("upw","pw","password")+phf("uph")+af("u")+`<button class="btn" ${fw} onclick="doSignup()">${t("signup")}</button>`+gb;
 else if(m=="complete")b.innerHTML=`<h3>${t("done")}</h3>`+nf("c",v)+phf("cph",v.phone)+af("c",v.addr)+`<button class="btn" ${fw} onclick="doSave()">${t("done")}</button>`;
