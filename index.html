@@ -210,7 +210,7 @@ const er=e=>{const k=String(e&&e.code||"").replace(/^(auth|firestore)\//,""),m=E
 const t=function(k){return T[L][k]};
 const nm=function(o,f){return o[f+"_"+L]||o[f+"_ar"]||o[f+"_en"]||""};
 const pr=function(p){return p.disc?Math.round(p.price*(100-p.disc)/100):Number(p.price)};
-window.cl=function(i){$(i).classList.remove("on");if(i=="ovP"){window._pt=0;cartUI()}if(i=="ovP"&&/[?&]p=/.test(location.search)){try{history.replaceState(null,"",location.pathname)}catch(e){}}};const op=function(i){$(i).classList.add("on")};
+window.cl=function(i){const e0=$(i);e0.classList.remove("on");if(e0._ret&&e0._ret.focus){try{e0._ret.focus({preventScroll:true})}catch(x){}}e0._ret=null;if(i=="ovP"){window._pt=0;cartUI()}if(i=="ovP"&&/[?&]p=/.test(location.search)){try{history.replaceState(null,"",location.pathname)}catch(e){}}};const op=function(i){const e=$(i);e.classList.add("on");e.setAttribute("role","dialog");e.setAttribute("aria-modal","true");if(!e._ret)e._ret=document.activeElement;e.tabIndex=-1;try{e.focus({preventScroll:true})}catch(x){}};
 window.go=function(i){$(i).scrollIntoView({behavior:"smooth"})};
 const toast=function(m){const d=document.createElement("div");d.textContent=m;const T=$("toast");T.innerHTML="";T.appendChild(d);clearTimeout(window._tt);window._tt=setTimeout(function(){d.remove()},3000);try{if(Notification.permission==="granted")new Notification("raqeem",{body:m})}catch(e){}};
 function ui(){document.documentElement.lang=L;document.documentElement.dir=L=="ar"?"rtl":"ltr";$("lg").textContent=L=="ar"?"EN":"ع";
