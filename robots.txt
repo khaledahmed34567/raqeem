@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://raqeem.qd.je/sitemap.xml
