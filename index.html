@@ -159,7 +159,7 @@ header .ic b.pl{animation:cpl .5s ease}@keyframes cpl{40%{transform:scale(1.6)}1
 .cbar{position:fixed;bottom:16px;left:50%;transform:translate(-50%,90px);z-index:39;width:calc(100vw - 170px);max-width:260px;min-width:0;overflow:hidden;text-overflow:ellipsis;border:0;border-radius:30px;background:var(--o);color:#fff;font:inherit;font-weight:700;font-size:14px;padding:13px 10px;box-shadow:0 10px 26px #e8530e55;cursor:pointer;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);white-space:nowrap}.cbar.on{transform:translate(-50%,0)}body:has(.ov.on) .cbar,body:has(#dr.on) .cbar{display:none}
 .strip{background:linear-gradient(90deg,#1a1310,#2b1a12,#1a1310);color:#ffd9c4;text-align:center;font-size:.85rem;padding:6px 10px;border-bottom:1px solid var(--l);animation:fi .8s both}
 #spb{position:fixed;top:0;inset-inline-start:0;height:3px;width:0;background:linear-gradient(90deg,#e8530e,#ff8a4c);z-index:100;pointer-events:none}
-</style><style>:focus-visible{outline:2px solid #ff8a4c;outline-offset:2px}html{-webkit-tap-highlight-color:transparent}@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}</style></head><body>
+</style><style>:focus-visible{outline:2px solid #ff8a4c;outline-offset:2px}html{-webkit-tap-highlight-color:transparent}@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}</style><style>@media print{.np,#toast,.cbar,.fab,.btt,#spb,header,#strip{display:none!important}body,.ov,.mod{background:#fff!important;color:#000!important}}</style></head><body>
 <div id="sp"><div><img class="lg big" data-l alt="raqeem" draggable="false"></div></div>
 <header><a class="logo" href="#" onclick="go('home');return false"><img class="lg" data-l alt="raqeem" draggable="false"></a>
 <nav><a data-i="home" onclick="go('home')"></a><a data-i="shop" onclick="go('shop')"></a><a data-i="track" onclick="openT()"></a><a data-i="faq" onclick="go('faq')"></a><a data-i="support" onclick="go('sup')"></a></nav>
@@ -219,7 +219,7 @@ $("fq").innerHTML=FQ.map(function(f){return '<details class="fq"><summary>'+(L==
 
 window.setLang=function(){L=L=="ar"?"en":"ar";localStorage.rq_l=L;ui();if($("dr").classList.contains("on"))openC();if(INV&&$("ovI").classList.contains("on"))rIn()};
 async function load(){if(window.FBERR){LD=true;shop();toast(t("err"));return}try{await load2();if(prods.length){cart=cart.filter(c=>prods.some(p=>p.id==c.id));save()}}catch(e){LD=true;shop();toast("Database error")}}
-async function load2(){const a=await getDocs(collection(db,"categories")),b=await getDocs(collection(db,"products"));cats=a.docs.map(function(d){return Object.assign({id:d.id},d.data())});prods=b.docs.map(function(d){return Object.assign({id:d.id},d.data())});LD=true;shop();if(!DL){DL=true;const dp=new URLSearchParams(location.search).get("p")||(location.hash.match(/^#p=(.+)$/)||[])[1];if(dp&&prods.some(function(x){return x.id==dp}))showP(dp)}}
+async function load2(){const a=await getDocs(collection(db,"categories")),b=await getDocs(collection(db,"products"));cats=a.docs.map(function(d){return Object.assign({id:d.id},d.data())});prods=b.docs.map(function(d){return Object.assign({id:d.id},d.data())});LD=true;shop();if(!DL){DL=true;window.rqRestore();const dp=new URLSearchParams(location.search).get("p")||(location.hash.match(/^#p=(.+)$/)||[])[1];if(dp&&prods.some(function(x){return x.id==dp}))showP(dp)}}
 const HRT='<svg viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.500 4.500 0 0 1 8-2.800A4.500 4.500 0 0 1 20 10c0 5.800-8 11-8 11z"/></svg>';
 function shop(){const ar=L=="ar";$("qs").placeholder=ar?"ابحث عن منتج":"Search products";
 $("qsort").innerHTML=[["",ar?"الترتيب الافتراضي":"Default order"],["pa",ar?"السعر: الأقل أولا":"Price: low to high"],["pd",ar?"السعر: الأعلى أولا":"Price: high to low"],["dd",ar?"الأعلى خصما":"Biggest discount"]].map(function(o){return '<option value="'+o[0]+'"'+(o[0]==srt?" selected":"")+'>'+o[1]+'</option>'}).join("");
@@ -264,7 +264,7 @@ window.qty=function(id,d){const i=cart.find(function(c){return c.id==id});i.q+=d
 const cnt=function(){return cart.reduce(function(a,c){return a+c.q},0)};
 
 function calc(){const sub=cart.reduce((a,c)=>{const p=prods.find(x=>x.id==c.id);return a+(p?pr(p)*c.q:0)},0),d=cp?Math.round(sub*cp.pct/100):0,n=cnt();return{sub,d,dl:n==0||n>=5?0:20,tot:Math.max(0,sub-d)+(n==0||n>=5?0:20)}}
-function cartUI(){const n=cnt(),b=$("cc");if(!window._pt)document.title=(n?"("+n+") ":"")+(L=="ar"?"رقيم | raqeem":"raqeem | Raqeem");b.textContent=n;if(n>PC){b.classList.remove("pl");void b.offsetWidth;b.classList.add("pl")}PC=n;cbu()}
+function cartUI(){const n=cnt(),b=$("cc");try{const w=$("wab"),base="https://wa.me/201097916886";if(w){const tx=cart.map(function(c){const p=prods.find(function(x){return x.id==c.id});return p?c.q+" x "+nm(p,"name"):""}).filter(Boolean).join("\n");w.href=tx?base+"?text="+encodeURIComponent((L=="ar"?"مرحبا، عايز أطلب:\n":"Hello, I want to order:\n")+tx):base}}catch(e){}if(!window._pt)document.title=(n?"("+n+") ":"")+(L=="ar"?"رقيم | raqeem":"raqeem | Raqeem");b.textContent=n;if(n>PC){b.classList.remove("pl");void b.offsetWidth;b.classList.add("pl")}PC=n;cbu()}
 /* forms */
 const inp=(id,k,ty,v)=>`<input id="${id}" type="${ty||"text"}" placeholder="${t(k)}" value="${esc(v)}">`;
 const nf=(p,v)=>`<div class="g3">${inp(p+"1","f1","text",v.f1)}${inp(p+"2","f2","text",v.f2)}${inp(p+"3","f3","text",v.f3)}</div>`;
@@ -369,6 +369,7 @@ window.payS=async id=>{const b=$("pb2"),f=$("pi").files[0],ref=$("rf2").value.tr
 ["contextmenu","dragstart","copy","cut"].forEach(function(e){document.addEventListener(e,function(ev){if(!/INPUT|TEXTAREA/.test(ev.target.tagName))ev.preventDefault()})});
 document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&/^[suspc]$/i.test(e.key)&&!/INPUT|TEXTAREA/.test(e.target.tagName)){e.preventDefault()}if(e.key=="F12")e.preventDefault()});
 
+window.rqRestore=function(){try{const s0=localStorage.rq_sort,c0=localStorage.rq_cat;if(s0){const sel=document.querySelector("select");if(sel)sel.value=s0;window._ss(s0)}if(c0&&c0!="all"&&cats.some(function(x){return x.id==c0}))window._sc(c0)}catch(e){}};window._ss=window.setSort;window._sc=window.setCat;window.setSort=function(v){window._ss(v);try{localStorage.rq_sort=v}catch(e){}};window.setCat=function(c){window._sc(c);try{localStorage.rq_cat=c}catch(e){}};
 const vq=new URLSearchParams(location.search).get("verify");
 ui();
 FBP.then(()=>{if(au){onAuthStateChanged(au,u=>{if(!bsy)setU(u)});getRedirectResult(au).then(r=>{if(r&&r.user){op("ovU");afterLogin()}}).catch(e=>toast(er(e)))}return load()}).then(cartUI);
