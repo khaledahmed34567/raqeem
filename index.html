@@ -45,7 +45,7 @@ footer{padding:30px 5vw;border-top:1px solid var(--l);color:var(--m);display:fle
 #sp{position:fixed;inset:0;background:var(--bg);z-index:99;display:grid;place-items:center;transition:opacity .5s}#sp svg{width:90px;height:90px;color:var(--o);stroke-dasharray:140;animation:dr 1.4s ease forwards}#sp b{display:block;text-align:center;font-size:2.4rem;opacity:0;animation:fi .6s .8s forwards;direction:ltr}
 @keyframes dr{from{stroke-dashoffset:140}to{stroke-dashoffset:0}}@keyframes fi{to{opacity:1}}@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 .tam{background:#fff;color:#14231c}.tam .logo{color:#14231c;justify-content:center}.tam img.ck{width:140px;animation:pop .6s}.tam h3{margin:10px 0}.tam .inf{background:#f4f7f5;border-radius:12px;padding:12px;margin:10px 0;font-size:.92rem;text-align:start}.tam a{color:#2a9472;word-break:break-all;display:block}
-#toast{position:fixed;bottom:20px;inset-inline-start:20px;z-index:99;display:flex;flex-direction:column;gap:8px}#toast div{background:var(--o);padding:10px 18px;border-radius:10px}
+#toast{position:fixed;top:76px;left:50%;transform:translateX(-50%);align-items:center;z-index:99;display:flex;flex-direction:column;gap:8px}#toast div{background:var(--o);padding:10px 18px;border-radius:10px}
 
 .tb{display:flex;gap:8px;margin-bottom:12px}.tb .btn{flex:1}
 .pf{display:flex;direction:ltr;gap:6px;align-items:center}.pf span{background:var(--l);padding:10px 12px;border-radius:10px;margin:5px 0}
@@ -156,7 +156,7 @@ header .ic b.pl{animation:cpl .5s ease}@keyframes cpl{40%{transform:scale(1.6)}1
 .avg{margin-bottom:10px;color:#f5a623}.avg b{color:var(--t)}
 .rmx{flex:none;background:none;border:0;color:var(--m);font-size:1.4rem;cursor:pointer;padding:4px 8px;transition:color .2s,transform .2s}.rmx:hover{color:#e5484d;transform:scale(1.15)}
 .pf.bad{border-color:#e5484d!important}.pf.bad+small,.pf small.er{color:#ff7a6b}
-.cbar{position:fixed;bottom:16px;left:50%;transform:translate(-50%,90px);z-index:39;max-width:calc(100vw - 150px);min-width:200px;border:0;border-radius:30px;background:var(--o);color:#fff;font:inherit;font-weight:700;padding:13px 22px;box-shadow:0 10px 26px #e8530e55;cursor:pointer;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);white-space:nowrap}.cbar.on{transform:translate(-50%,0)}body:has(.ov.on) .cbar,body:has(#dr.on) .cbar{display:none}
+.cbar{position:fixed;bottom:16px;left:50%;transform:translate(-50%,90px);z-index:39;width:calc(100vw - 170px);max-width:260px;min-width:0;overflow:hidden;text-overflow:ellipsis;border:0;border-radius:30px;background:var(--o);color:#fff;font:inherit;font-weight:700;font-size:14px;padding:13px 10px;box-shadow:0 10px 26px #e8530e55;cursor:pointer;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);white-space:nowrap}.cbar.on{transform:translate(-50%,0)}body:has(.ov.on) .cbar,body:has(#dr.on) .cbar{display:none}
 .strip{background:linear-gradient(90deg,#1a1310,#2b1a12,#1a1310);color:#ffd9c4;text-align:center;font-size:.85rem;padding:6px 10px;border-bottom:1px solid var(--l);animation:fi .8s both}
 #spb{position:fixed;top:0;inset-inline-start:0;height:3px;width:0;background:linear-gradient(90deg,#e8530e,#ff8a4c);z-index:100;pointer-events:none}
 </style></head><body>
@@ -212,7 +212,7 @@ const nm=function(o,f){return o[f+"_"+L]||o[f+"_ar"]||o[f+"_en"]||""};
 const pr=function(p){return p.disc?Math.round(p.price*(100-p.disc)/100):Number(p.price)};
 window.cl=function(i){$(i).classList.remove("on")};const op=function(i){$(i).classList.add("on")};
 window.go=function(i){$(i).scrollIntoView({behavior:"smooth"})};
-const toast=function(m){const d=document.createElement("div");d.textContent=m;$("toast").appendChild(d);setTimeout(function(){d.remove()},4000);try{if(Notification.permission==="granted")new Notification("raqeem",{body:m})}catch(e){}};
+const toast=function(m){const d=document.createElement("div");d.textContent=m;const T=$("toast");T.innerHTML="";T.appendChild(d);clearTimeout(window._tt);window._tt=setTimeout(function(){d.remove()},3000);try{if(Notification.permission==="granted")new Notification("raqeem",{body:m})}catch(e){}};
 function ui(){document.documentElement.lang=L;document.documentElement.dir=L=="ar"?"rtl":"ltr";$("lg").textContent=L=="ar"?"EN":"ع";
 document.querySelectorAll("[data-i]").forEach(function(e){e.textContent=t(e.dataset.i)});document.querySelectorAll("[data-p]").forEach(function(e){e.placeholder=t(e.dataset.p)});
 $("fq").innerHTML=FQ.map(function(f){return '<details class="fq"><summary>'+(L=="ar"?f[0]:f[2])+'</summary><p>'+(L=="ar"?f[1]:f[3])+'</p></details>'}).join("");$("strip").textContent=L=="ar"?"التوصيل 20 جنيه، ومجاني عند طلب 5 قطع أو أكثر":"Delivery 20 EGP, free for 5 items or more";shop();cartUI()}
