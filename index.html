@@ -358,7 +358,7 @@ function stB(p){var n=stN(p);if(n===null)return"";var ar=L=="ar";if(n<=0)return'
 (function(){var st=document.createElement("style");st.textContent=".stb{position:absolute;bottom:8px;inset-inline-start:8px;font-size:.72rem;font-weight:800;padding:3px 9px;border-radius:99px;color:#fff;background:#e8530e}.stl{margin-top:12px;padding:10px 14px;border-radius:12px;background:rgba(232,83,14,.12);border:1px solid rgba(232,83,14,.4);color:#ffb68f;font-weight:700;font-size:.9rem}.stl.so{background:#241f1d;border-color:#3a3330;color:#e9ddd6}.stb.so{background:#3a3330;color:#e9ddd6}.card:has(.stb.so) .ph{filter:grayscale(.8) brightness(.8)}.card:has(.stb.so) .qa{display:none}";document.head.appendChild(st)})();
 function stL(p){var n=stN(p);if(n===null||n>5)return"";var ar=L=="ar";return'<div class="stl'+(n<=0?" so":"")+'">'+(n<=0?(ar?"نفدت الكمية حاليا. اضغط اسأل على واتساب لمعرفة موعد التوفر.":"Out of stock right now. Ask on WhatsApp for the restock date."):(ar?"باقي "+n+" قطع فقط. اطلبها قبل ما تخلص.":"Only "+n+" left. Order before they sell out."))+'</div>'}
 (function(){
-window.AIURL="";
+window.AIURL="https://raqeem-ai.khaledahmedelbrbary80.workers.dev";
 var H=[];
 function ar(){return L=="ar"}
 function num(q){q=String(q).replace(/[٠-٩]/g,function(d){return"٠١٢٣٤٥٦٧٨٩".indexOf(d)});var m=q.match(/(\d{2,6})/);return m?Number(m[1]):0}
@@ -379,7 +379,9 @@ async function remote(q,l){if(!window.AIURL)return null;try{var c=new AbortContr
 window.aiAsk=async function(q){q=String(q||document.getElementById("aiQ").value).trim().slice(0,200);if(!q)return;document.getElementById("aiQ").value="";add("u",esc(q));
 var th=document.createElement("div");th.className="aim a";th.textContent="...";document.getElementById("aiL").appendChild(th);
 var rm=await remote(q),l=null,txt="";if(rm){txt=rm.a;if(rm.ids)l=rm.ids.map(function(id){return prods.find(function(p){return p.id==id})}).filter(function(p){return p&&!soldO(p.id)})}
-if(!l)l=pick(q);th.remove();
+if(!l||!l.length)l=pick(q);
+if(txt){var first=String(txt).split(/\n+/)[0].trim().slice(0,160),okn=l.some(function(p){var a=String(nm(p,"name")).toLowerCase();return a&&first.toLowerCase().indexOf(a)>-1});txt=(okn&&first)?first:""}
+th.remove();
 if(!txt)txt=l.length?(NOTE=="b"?(ar()?"مفيش حاجة في حدود ميزانيتك. دي أقرب اختيارات:":"Nothing in your budget. Closest options:"):(ar()?"دي أنسب الاختيارات من المتجر:":"Best matches from the store:")):(ar()?"مالقيتش منتج مطابق. تقدر تكتب اسم المنتج بشكل تاني أو تسأل على واتساب.":"No matching product. Try other words or ask on WhatsApp.");
 add("a",esc(txt)+l.map(card).join("")+(l.length?"":'<button class="btn g" style="margin-top:8px" onclick="aiClose();waAsk&&waAsk()">'+(ar()?"اسأل على واتساب":"Ask on WhatsApp")+'</button>'))};
 window.aiOpen=function(){var o=document.getElementById("aiO");if(!o)return;o.classList.add("on");var b=document.getElementById("aiL");if(!b.children.length)add("a",ar()?"اهلا! قولي عايز ايه وميزانيتك. مثال: شاحن تحت 500 او حقيبة عليها خصم.":"Hi! Tell me what you need and your budget. Example: charger under 500, or a bag on sale.");setTimeout(function(){document.getElementById("aiQ").focus()},200)};
