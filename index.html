@@ -323,6 +323,14 @@ if(!me){if(!asked&&!UVU){asked=true;openU()}return}
 if(!ok(prof)){if(!opened&&!asked){asked=true;openU()}return}
 if(!opened){opened=true;openU();return}
 if(document.getElementById("tgc")){clearInterval(iv);try{history.replaceState(null,"",location.pathname)}catch(e){}Promise.resolve(tgLink()).then(function(){setTimeout(function(){try{var a=document.querySelector("#tgc a[href*='t.me']");if(a)window.open(a.href,"_blank","noopener")}catch(e){}},300)})}}catch(e){}},600)})();
+(function(){var K="rq_ic",tried=false,OR="";function ok(v){return typeof v=="string"&&v.indexOf("data:image/")==0&&v.length<900000}
+function AP(d){try{var h=document.head,l=document.querySelector('link[rel="icon"]');if(!l){l=document.createElement("link");l.rel="icon";h.appendChild(l)}if(!OR)OR=l.getAttribute("href")||"";var a=document.querySelector('link[rel="apple-touch-icon"]'),m=document.querySelector('link[rel="manifest"]');if(!d){l.href=OR;if(a)a.remove();if(m){if(m.__u)URL.revokeObjectURL(m.__u);m.remove()}return}
+l.removeAttribute("type");l.href=d.s;if(!a){a=document.createElement("link");a.rel="apple-touch-icon";h.appendChild(a)}a.href=d.a;var j={name:"رقيم",short_name:"رقيم",start_url:location.origin+"/",scope:location.origin+"/",display:"standalone",background_color:"#140d0a",theme_color:"#140d0a",icons:[{src:d.l,sizes:"512x512",type:"image/png",purpose:"any"},{src:d.a,sizes:"180x180",type:"image/png",purpose:"any"}]};var u=URL.createObjectURL(new Blob([JSON.stringify(j)],{type:"application/manifest+json"}));if(!m){m=document.createElement("link");m.rel="manifest";h.appendChild(m)}if(m.__u)URL.revokeObjectURL(m.__u);m.__u=u;m.href=u}catch(e){}}
+function norm(d){if(!d)return null;var l=d.icon512,a=d.icon180,s=d.icon64||l;if(ok(l)&&ok(a)&&ok(s))return{s:s,a:a,l:l};if(ok(l)&&ok(s)&&!ok(a))return{s:s,a:l,l:l};if(ok(a)&&!ok(l))return{s:d.icon64&&ok(d.icon64)?d.icon64:a,a:a,l:a};return null}
+function cache(){try{var d=JSON.parse(localStorage.getItem(K)||"null");return d&&ok(d.s)&&ok(d.a)&&ok(d.l)?d:null}catch(e){return null}}
+var c0=cache();if(c0)AP(c0);
+async function ld(){if(tried||!LD||!db)return;tried=true;try{var sn=await getDoc(doc(db,"settings","icon"));var x=sn.exists()?norm(sn.data()):null;if(x){try{localStorage.setItem(K,JSON.stringify(x))}catch(e){}AP(x)}else{try{localStorage.removeItem(K)}catch(e){}AP(null)}}catch(e){}}
+var iv=setInterval(function(){try{ld();if(tried)clearInterval(iv)}catch(e){}},1500)})();
 window.cxl=function(){return L=="ar"?"ملغي":"Cancelled"};(function(){var D=null,tried=false;window.etaT=function(){if(!D)return"";var ar=L=="ar",x=String((ar?D.ar:D.en)||D.ar||D.en||"").slice(0,120);return x?(ar?"موعد التوصيل المتوقع: ":"Expected delivery: ")+x:""};
 function up(){var e=document.getElementById("eta");if(e){var v=etaT();if(e.textContent!==v)e.textContent=v}}
 async function ld(){if(tried||!LD||!db)return;tried=true;try{var sn=await getDoc(doc(db,"settings","eta"));if(sn.exists())D=sn.data()}catch(e){}}
