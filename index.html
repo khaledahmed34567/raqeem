@@ -623,6 +623,15 @@ window.addEventListener("appinstalled",function(){c.style.display="none"});
 if(ios)setTimeout(function(){c.style.display="flex"},4000);
 window.__instShow=function(){c.style.display="flex"}}
 }catch(e){}})();
+/* savings r99 */
+(function(){try{var dr=document.getElementById("dr");if(!dr)return;var busy=0;
+function fix(){if(busy)return;var g=dr.querySelector(".gt");if(!g)return;var old=dr.querySelector(".svl");var sv=0;
+try{cart.forEach(function(c){var p=prods.find(function(x){return x.id==c.id});if(p&&p.price>pr(p))sv+=(p.price-pr(p))*c.q})}catch(e){return}
+sv=Math.round(sv);if(sv<=0){if(old){busy=1;old.remove();busy=0}return}
+var tx=(L=="ar"?"\u0648\u0641\u0651\u0631\u062a \u0645\u0646 \u0627\u0644\u062e\u0635\u0645: ":"You save: ")+sv+" "+t("egp");
+busy=1;if(!old){old=document.createElement("div");old.className="svl";old.style.cssText="color:#2a9472;font-weight:700;padding:6px 0;text-align:center;background:#2a94721a;border-radius:8px;margin:6px 0";g.parentNode.insertBefore(old,g)}
+if(old.textContent!=tx)old.textContent=tx;busy=0}
+new MutationObserver(fix).observe(dr,{childList:true,subtree:true})}catch(e){}})();
 /* orders, invoice */
 const W={},seen={};
 function watch(id){if(W[id]||!db)return;W[id]=onSnapshot(doc(db,"orders",id),s=>{if(!s.exists())return;const o=s.data(),k=o.status+"|"+o.payStatus+"|"+(o.canceled?1:0),old=seen[id];seen[id]=k;try{if(me&&o.uid==me.uid){const i=BAO.findIndex(x=>x.id==id);if(i>-1)BAO[i]=Object.assign({},BAO[i],o);else BAO.unshift(Object.assign({id},o));baR()}}catch(e){}if(old===undefined||old===k)return;toast(t("oid")+" "+id.slice(0,6)+": "+(o.canceled&&old.split("|")[2]!="1"?cxl():o.payStatus!=old.split("|")[1]?T[L].ps[o.payStatus]:T[L].s[o.status]));if(GW&&GW.id==id&&o.payStatus!="unpaid"){closeGw();showInv(id,o);return}if(INV&&INV.id==id){INV.o=o;if($("ovI").classList.contains("on"))rIn()}},()=>{delete W[id]})}
